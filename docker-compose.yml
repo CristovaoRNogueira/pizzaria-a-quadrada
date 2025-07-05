@@ -14,6 +14,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - pizzaria_network
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -22,9 +23,68 @@ services:
       - "6379:6379"
     networks:
       - pizzaria_network
+    restart: unless-stopped
+
+  wppconnect:
+    image: wppconnect/server:latest
+    container_name: pizzaria_wppconnect
+    environment:
+      - PORT=21465
+      - WEBHOOK_URL=http://backend:3001/api/webhook
+      - SECRET_KEY=PIZZARIA_QUADRADA_SECRET
+    ports:
+      - "21465:21465"
+    volumes:
+      - wppconnect_tokens:/usr/src/wppconnect-server/tokens
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: pizzaria_backend
+    environment:
+      DATABASE_URL: "postgresql://pizzaria:pizzaria123@postgres:5432/pizzaria_quadrada?schema=public"
+      JWT_SECRET: "your-super-secret-jwt-key-here"
+      ADMIN_EMAIL: "admin@pizzariaquadrada.com"
+      ADMIN_PASSWORD: "pizzaria2024"
+      WHATSAPP_API_URL: "http://wppconnect:21465"
+      WHATSAPP_SESSION: "pizzaria-quadrada"
+      PIX_KEY: "77999742491"
+      PIX_NAME: "Pizzaria a Quadrada"
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+      - wppconnect
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+    volumes:
+      - ./prisma:/app/prisma
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: pizzaria_frontend
+    environment:
+      VITE_API_URL: "http://localhost:3001/api"
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  wppconnect_tokens:
 
 networks:
   pizzaria_network:

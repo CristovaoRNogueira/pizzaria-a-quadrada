@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Clock,
   CheckCircle,
@@ -19,6 +19,10 @@ import {
   BarChart3,
   Send,
   Users,
+  Info,
+  Check,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { OrderStatus, Pizza, CartItem } from "../types/index";
@@ -26,8 +30,11 @@ import { whatsappService } from "../services/whatsapp";
 import WhatsAppStatus from "./WhatsAppStatus";
 import BusinessHoursManager from "./BusinessHoursManager";
 import PaymentSettings from "./PaymentSettings";
+import EstablishmentSettings from "./EstablishmentSettings";
 import AdminDashboard from "./AdminDashboard";
 import PromotionManager from "./PromotionManager";
+import UserManagement from "./UserManagement";
+import OrderDetailsModal from "./OrderDetailsModal";
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -36,8 +43,8 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "orders" | "menu" | "whatsapp" | "settings" | "promotions"
-  >("dashboard");
+    "dashboard" | "orders" | "menu" | "whatsapp" | "settings" | "promotions" | "users"
+  >("orders");
   const [activeOrderTab, setActiveOrderTab] = useState<
     "new" | "accepted" | "production" | "delivery" | "completed" | "all"
   >("new");
@@ -45,8 +52,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     "pizzas"
   );
   const [activeSettingsTab, setActiveSettingsTab] = useState<
-    "hours" | "payment"
-  >("hours");
+    "hours" | "payment" | "establishment"
+  >("establishment");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingItem, setEditingItem] = useState<Pizza | null>(null);
   const [formData, setFormData] = useState<Partial<Pizza>>({
@@ -57,6 +64,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     ingredients: [],
     sizes: { small: 35.0, medium: 35.0, large: 55.0, family: 65.0 },
   });
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastOrderCount, setLastOrderCount] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+
+  // Som de notificação para novos pedidos
+  useEffect(() => {
+    const newOrderCount = state.orders.filter(order => order.status === 'new').length;
+    
+    if (soundEnabled && newOrderCount > lastOrderCount && lastOrderCount > 0) {
+      // Tocar som de notificação
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+      audio.volume = 0.3;
+      audio.play().catch(e => console.log('Erro ao tocar som:', e));
+      
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "🔔 Novo pedido recebido!",
+      });
+    }
+    
+    setLastOrderCount(newOrderCount);
+  }, [state.orders, soundEnabled, lastOrderCount, dispatch]);
 
   const statusLabels = {
     new: "Novo Pedido",
@@ -181,6 +211,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     } else {
       printContent += `RETIRADA NO LOCAL\n`;
     }
+    if (order.customer.notes) {
+      printContent += `OBS: ${order.customer.notes}\n`;
+    }
     printContent += "--------------------------------\n\n";
     printContent += "ITENS:\n";
 
@@ -302,6 +335,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         payload: "Popup bloqueado. Verifique as configurações do navegador.",
       });
     }
+  };
+
+  const confirmPayment = (orderId: string) => {
+    const order = state.orders.find(o => o.id === orderId);
+    if (order) {
+      dispatch({
+        type: "CONFIRM_PAYMENT",
+        payload: orderId
+      });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: `Pagamento do pedido #${orderId} confirmado!`,
+      });
+    }
+  };
+
+  const deleteOrder = (orderId: string) => {
+    if (confirm('Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.')) {
+      dispatch({
+        type: "DELETE_ORDER",
+        payload: orderId
+      });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: `Pedido #${orderId} excluído com sucesso!`,
+      });
+    }
+  };
+
+  const showOrderDetails = (order: any) => {
+    setSelectedOrder(order);
+    setShowOrderModal(true);
   };
 
   const getNextStatus = (currentStatus: OrderStatus): OrderStatus | null => {
@@ -459,7 +524,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   };
 
   const goToMenu = () => {
-    // Navegar para a página principal (menu)
     window.location.href = "/";
   };
 
@@ -477,6 +541,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             </div>
 
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="bg-red-700 hover:bg-red-800 px-3 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                title={soundEnabled ? "Desativar som" : "Ativar som"}
+              >
+                {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+              </button>
+
               <button
                 onClick={goToMenu}
                 className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
@@ -514,13 +586,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             </button>
             <button
               onClick={() => setActiveTab("orders")}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              className={`px-6 py-3 rounded-lg font-medium transition-colors relative ${
                 activeTab === "orders"
                   ? "bg-red-600 text-white shadow-md"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               Pedidos
+              {getOrderCount("new") > 0 && (
+                <span className="absolute -top-1 -right-1 bg-yellow-500 text-red-900 text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-pulse">
+                  {getOrderCount("new")}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab("menu")}
@@ -542,6 +619,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             >
               <Send className="h-5 w-5 inline mr-2" />
               Promoções
+            </button>
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === "users"
+                  ? "bg-red-600 text-white shadow-md"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Users className="h-5 w-5 inline mr-2" />
+              Usuários
             </button>
             <button
               onClick={() => setActiveTab("whatsapp")}
@@ -570,11 +658,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
           <AdminDashboard />
         ) : activeTab === "promotions" ? (
           <PromotionManager />
+        ) : activeTab === "users" ? (
+          <UserManagement />
         ) : activeTab === "settings" ? (
           <div>
             {/* Settings Sub-tabs */}
             <div className="flex justify-center mb-6">
               <div className="flex space-x-2 bg-white rounded-lg p-1 shadow-md">
+                <button
+                  onClick={() => setActiveSettingsTab("establishment")}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeSettingsTab === "establishment"
+                      ? "bg-red-600 text-white shadow-md"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Estabelecimento
+                </button>
                 <button
                   onClick={() => setActiveSettingsTab("hours")}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -598,7 +698,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               </div>
             </div>
 
-            {activeSettingsTab === "hours" ? (
+            {activeSettingsTab === "establishment" ? (
+              <EstablishmentSettings />
+            ) : activeSettingsTab === "hours" ? (
               <BusinessHoursManager />
             ) : (
               <PaymentSettings />
@@ -779,7 +881,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {getOrdersByStatus(activeOrderTab).map((order) => {
                   const StatusIcon = statusIcons[order.status];
                   const nextStatus = getNextStatus(order.status);
@@ -787,147 +889,138 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                   return (
                     <div
                       key={order.id}
-                      className="bg-white rounded-xl shadow-lg p-6"
+                      className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
                           <div
                             className={`p-2 rounded-full ${
                               statusColors[order.status]
                             }`}
                           >
-                            <StatusIcon className="h-5 w-5 text-white" />
+                            <StatusIcon className="h-4 w-4 text-white" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-800">
-                              Pedido #{order.id}
+                            <h3 className="font-semibold text-gray-800 text-sm">
+                              #{order.id}
                             </h3>
-                            <p className="text-sm text-gray-600">
-                              {order.createdAt.toLocaleString()}
+                            <p className="text-xs text-gray-600">
+                              {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </p>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-red-600">
+                          <p className="text-lg font-bold text-red-600">
                             R$ {order.total.toFixed(2)}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-xs text-gray-600">
                             {statusLabels[order.status]}
                           </p>
                         </div>
                       </div>
 
-                      <div className="border-t pt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">
-                              Cliente
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {order.customer.name}
+                      <div className="border-t pt-3 mb-3">
+                        <div className="mb-2">
+                          <p className="font-medium text-gray-800 text-sm">
+                            {order.customer.name}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {order.customer.phone}
+                          </p>
+                          {order.customer.deliveryType === "delivery" ? (
+                            <p className="text-xs text-gray-600">
+                              📍 {order.customer.neighborhood}
                             </p>
-                            <p className="text-sm text-gray-600">
-                              {order.customer.phone}
+                          ) : (
+                            <p className="text-xs text-blue-600 font-medium">
+                              🏪 Retirada
                             </p>
-                            {order.customer.deliveryType === "delivery" ? (
-                              <>
-                                <p className="text-sm text-gray-600">
-                                  {order.customer.address},{" "}
-                                  {order.customer.neighborhood}
-                                </p>
-                                {order.customer.reference && (
-                                  <p className="text-sm text-gray-600">
-                                    Ref: {order.customer.reference}
-                                  </p>
-                                )}
-                                {order.customer.location && (
-                                  <p className="text-sm text-green-600">
-                                    📍 Localização compartilhada
-                                  </p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="text-sm text-blue-600 font-medium">
-                                🏪 Retirada no local
-                              </p>
-                            )}
-                            <p className="text-sm text-gray-600 mt-2">
-                              💳 Pagamento: {order.payment.method.toUpperCase()}
-                              {order.payment.needsChange && (
-                                <span className="text-orange-600">
-                                  {" "}
-                                  (Troco: R${" "}
-                                  {order.payment.changeAmount?.toFixed(2)})
-                                </span>
-                              )}
-                            </p>
-                          </div>
-
-                          <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">
-                              Itens
-                            </h4>
-                            {order.items.map((item, index) => (
-                              <div
-                                key={index}
-                                className="text-sm text-gray-600 mb-2"
-                              >
-                                <div>
-                                  {item.quantity}x {item.name} (
-                                  {getSizeLabel(item.selectedSize)})
-                                </div>
-                                {item.selectedFlavors &&
-                                  item.selectedFlavors.length > 1 && (
-                                    <div className="text-xs text-gray-500 ml-4">
-                                      Sabores:{" "}
-                                      {item.selectedFlavors
-                                        .map((f) => f.name)
-                                        .join(", ")}
-                                    </div>
-                                  )}
-                              </div>
-                            ))}
-                          </div>
+                          )}
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          {order.status === "new" && (
-                            <button
-                              onClick={() => printKitchenOrder(order)}
-                              className="flex-1 min-w-[120px] bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                            >
-                              <Printer className="h-4 w-4" />
-                              <span>Imprimir</span>
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() =>
-                              sendWhatsAppNotification(
-                                order.customer.phone,
-                                order.status,
-                                order
-                              )
-                            }
-                            className="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                            <span>WhatsApp</span>
-                          </button>
-
-                          {nextStatus && (
-                            <button
-                              onClick={() =>
-                                handleStatusChange(order.id, nextStatus)
-                              }
-                              className="flex-1 min-w-[160px] bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-                            >
-                              → {statusLabels[nextStatus]}
-                            </button>
-                          )}
+                        <div className="mb-2">
+                          <p className="text-xs text-gray-600">
+                            {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            💳 {order.payment.method.toUpperCase()}
+                            {order.payment.confirmed && (
+                              <span className="text-green-600 ml-1">✓</span>
+                            )}
+                          </p>
                         </div>
                       </div>
+
+                      {/* Ações Rápidas */}
+                      <div className="grid grid-cols-3 gap-1 mb-2">
+                        <button
+                          onClick={() => showOrderDetails(order)}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
+                          title="Ver detalhes"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+
+                        <button
+                          onClick={() => printKitchenOrder(order)}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
+                          title="Imprimir"
+                        >
+                          <Printer className="h-3 w-3" />
+                        </button>
+
+                        <button
+                          onClick={() => confirmPayment(order.id)}
+                          className={`p-2 rounded text-xs font-medium transition-colors flex items-center justify-center ${
+                            order.payment.confirmed
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-700'
+                          }`}
+                          title="Confirmar pagamento"
+                          disabled={order.payment.confirmed}
+                        >
+                          <Check className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1">
+                        <button
+                          onClick={() =>
+                            sendWhatsAppNotification(
+                              order.customer.phone,
+                              order.status,
+                              order
+                            )
+                          }
+                          className="bg-green-100 hover:bg-green-200 text-green-700 p-2 rounded text-xs font-medium transition-colors flex items-center justify-center space-x-1"
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                          <span>WhatsApp</span>
+                        </button>
+
+                        <button
+                          onClick={() => deleteOrder(order.id)}
+                          className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
+                          title="Excluir pedido"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {nextStatus && (
+                        <button
+                          onClick={() =>
+                            handleStatusChange(order.id, nextStatus)
+                          }
+                          className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          → {statusLabels[nextStatus]}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -1285,6 +1378,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes do Pedido */}
+      {showOrderModal && selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowOrderModal(false);
+            setSelectedOrder(null);
+          }}
+        />
+      )}
     </div>
   );
 };

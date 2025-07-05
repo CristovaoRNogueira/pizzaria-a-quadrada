@@ -26,6 +26,21 @@ services:
       - pizzaria_network
     restart: unless-stopped
 
+  wppconnect:
+    image: wppconnect/server:latest
+    container_name: pizzaria_wppconnect
+    environment:
+      - PORT=21465
+      - WEBHOOK_URL=http://backend:3001/api/webhook
+      - SECRET_KEY=PIZZARIA_QUADRADA_SECRET
+    ports:
+      - "21465:21465"
+    volumes:
+      - wppconnect_tokens:/usr/src/wppconnect-server/tokens
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -36,7 +51,7 @@ services:
       JWT_SECRET: "your-super-secret-jwt-key-here"
       ADMIN_EMAIL: "admin@pizzariaquadrada.com"
       ADMIN_PASSWORD: "pizzaria2024"
-      WHATSAPP_API_URL: "http://localhost:21465"
+      WHATSAPP_API_URL: "http://wppconnect:21465"
       WHATSAPP_SESSION: "pizzaria-quadrada"
       PIX_KEY: "77999742491"
       PIX_NAME: "Pizzaria a Quadrada"
@@ -46,6 +61,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - wppconnect
     networks:
       - pizzaria_network
     restart: unless-stopped
@@ -69,6 +85,7 @@ services:
 
 volumes:
   postgres_data:
+  wppconnect_tokens:
 
 networks:
   pizzaria_network:

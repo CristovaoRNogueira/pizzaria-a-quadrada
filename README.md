@@ -1,15 +1,17 @@
-# 🍕 Pizzaria a Quadrada - Sistema Completo
+# 🍕 Pizzaria a Quadrada - Sistema Completo (PWA)
 
-Sistema completo de pedidos online para pizzaria com PostgreSQL, Prisma e integração WhatsApp.
+Sistema completo de pedidos online para pizzaria com PostgreSQL, Prisma, integração WhatsApp e PWA.
 
 ## 🚀 Funcionalidades
 
-### 📱 **Frontend (React + TypeScript)**
+### 📱 **Frontend (React + TypeScript + PWA)**
 - **Cardápio interativo** com pizzas quadradas, redondas, doces e bebidas
 - **Sistema de pedidos** com carrinho inteligente
 - **Painel administrativo** completo
 - **Integração WhatsApp** automática
 - **Configurações de horário** e pagamento
+- **Acompanhamento de pedidos** em tempo real
+- **Instalável como aplicativo** (PWA)
 
 ### 🗄️ **Backend (Node.js + Express + Prisma)**
 - **API RESTful** completa
@@ -32,11 +34,9 @@ Sistema completo de pedidos online para pizzaria com PostgreSQL, Prisma e integr
 # Node.js 18+
 node --version
 
-# PostgreSQL 15+
-psql --version
-
-# Docker (opcional)
+# Docker e Docker Compose
 docker --version
+docker-compose --version
 ```
 
 ### 2. **Instalação**
@@ -48,45 +48,41 @@ cd pizzaria-quadrada
 # Instalar dependências
 npm install
 
-# Configurar banco de dados (Docker)
-docker-compose up -d
-
-# Ou instalar PostgreSQL localmente
-# Criar banco: pizzaria_quadrada
-```
-
-### 3. **Configuração do Banco**
-```bash
-# Copiar arquivo de ambiente
+# Configurar variáveis de ambiente
 cp .env.example .env
-
-# Editar .env com suas configurações
-# DATABASE_URL="postgresql://pizzaria:pizzaria123@localhost:5432/pizzaria_quadrada"
-
-# Gerar cliente Prisma
-npm run db:generate
-
-# Executar migrações
-npm run db:push
-
-# Popular banco com dados iniciais
-npm run db:seed
+# Editar .env conforme necessário
 ```
 
-### 4. **Executar Aplicação**
+### 3. **Executar com Docker (Recomendado)**
 ```bash
-# Terminal 1: Backend
-cd server
-npm run dev
+# Iniciar todos os serviços
+npm run docker:up
 
-# Terminal 2: Frontend
-npm run dev
+# Visualizar logs
+npm run docker:logs
 
-# Acessar aplicação
-# Frontend: http://localhost:5173
-# Backend: http://localhost:3001
-# Admin: http://localhost:5173/admin
+# Parar todos os serviços
+npm run docker:down
 ```
+
+### 4. **Executar sem Docker (Desenvolvimento)**
+```bash
+# Iniciar PostgreSQL e Redis localmente
+# (Você precisará ter PostgreSQL e Redis instalados)
+
+# Configurar banco de dados
+npm run db:generate
+npm run db:push
+npm run db:seed
+
+# Iniciar aplicação
+npm run start
+```
+
+### 5. **Acessar Aplicação**
+- **Frontend:** http://localhost:80 ou http://localhost:5173 (dev)
+- **Backend:** http://localhost:3001
+- **Admin:** http://localhost/admin ou http://localhost:5173/admin (dev)
 
 ## 🔐 Credenciais Padrão
 
@@ -96,10 +92,10 @@ npm run dev
 ## 📋 Scripts Disponíveis
 
 ```bash
-# Frontend
-npm run dev          # Executar em desenvolvimento
-npm run build        # Build para produção
-npm run preview      # Preview do build
+# Desenvolvimento
+npm run dev          # Executar frontend em desenvolvimento
+npm run backend      # Executar backend em desenvolvimento
+npm run start        # Executar frontend e backend juntos
 
 # Banco de dados
 npm run db:generate  # Gerar cliente Prisma
@@ -108,160 +104,115 @@ npm run db:migrate   # Criar migração
 npm run db:studio    # Abrir Prisma Studio
 npm run db:seed      # Popular banco com dados
 
-# Backend
-cd server && npm run dev  # Executar backend
+# Docker
+npm run docker:build # Construir imagens
+npm run docker:up    # Iniciar contêineres
+npm run docker:down  # Parar contêineres
+npm run docker:logs  # Ver logs
+
+# Produção
+npm run build        # Build para produção
+npm run preview      # Preview do build
 ```
 
 ## 🌐 Deploy para AWS
 
-### **Opção 1: AWS Amplify (Recomendado)**
+### **Opção 1: AWS Elastic Beanstalk + RDS**
 
 1. **Preparar para Deploy**
 ```bash
-# Build da aplicação
-npm run build
+# Instalar EB CLI
+pip install awsebcli
 
-# Configurar variáveis de ambiente
-# VITE_API_URL=https://sua-api.amazonaws.com/api
+# Inicializar EB
+eb init
+
+# Criar ambiente EB
+eb create pizzaria-quadrada-prod
 ```
 
-2. **Deploy no Amplify**
+2. **Configurar RDS (PostgreSQL)**
 ```bash
-# Instalar AWS CLI
-aws configure
-
-# Conectar repositório ao Amplify
-# Via console AWS ou CLI
-```
-
-### **Opção 2: AWS EC2 + RDS**
-
-1. **Configurar RDS (PostgreSQL)**
-```bash
-# Criar instância RDS PostgreSQL
+# Criar instância RDS PostgreSQL via console AWS
 # Configurar security groups
 # Anotar endpoint de conexão
 ```
 
-2. **Configurar EC2**
+3. **Configurar Variáveis de Ambiente no EB**
 ```bash
-# Criar instância EC2 (Ubuntu 22.04)
-# Instalar Node.js, PM2, Nginx
-
-# Conectar via SSH
-ssh -i sua-chave.pem ubuntu@ip-da-instancia
-
-# Instalar dependências
-sudo apt update
-sudo apt install nodejs npm nginx
-sudo npm install -g pm2
+eb setenv DATABASE_URL="postgresql://user:pass@rds-endpoint:5432/db" \
+  JWT_SECRET="production-secret" \
+  ADMIN_EMAIL="admin@pizzariaquadrada.com" \
+  ADMIN_PASSWORD="pizzaria2024" \
+  WHATSAPP_API_URL="http://localhost:21465" \
+  WHATSAPP_SESSION="pizzaria-quadrada" \
+  PIX_KEY="77999742491" \
+  PIX_NAME="Pizzaria a Quadrada" \
+  PORT="3001"
 ```
 
-3. **Deploy da Aplicação**
+4. **Deploy**
 ```bash
-# Clonar repositório
-git clone <repo-url>
-cd pizzaria-quadrada
-
-# Instalar dependências
-npm install
-
-# Configurar .env para produção
-DATABASE_URL="postgresql://user:pass@rds-endpoint:5432/db"
-JWT_SECRET="production-secret"
-VITE_API_URL="https://seu-dominio.com/api"
-
-# Build frontend
-npm run build
-
-# Configurar Prisma
-npm run db:generate
-npm run db:push
-npm run db:seed
-
-# Iniciar backend com PM2
-cd server
-pm2 start index.ts --name "pizzaria-api"
-
-# Configurar Nginx
-sudo nano /etc/nginx/sites-available/pizzaria
+eb deploy
 ```
 
-4. **Configuração Nginx**
-```nginx
-server {
-    listen 80;
-    server_name seu-dominio.com;
+### **Opção 2: AWS ECS + Fargate + RDS**
 
-    # Frontend
-    location / {
-        root /home/ubuntu/pizzaria-quadrada/dist;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Backend API
-    location /api {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### **Opção 3: AWS ECS + Fargate**
-
-1. **Criar Dockerfile**
-```dockerfile
-# Frontend
-FROM node:18-alpine AS frontend
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-# Backend
-FROM node:18-alpine AS backend
-WORKDIR /app
-COPY server/package*.json ./
-RUN npm install
-COPY server/ .
-RUN npm run build
-
-# Production
-FROM node:18-alpine
-WORKDIR /app
-COPY --from=backend /app .
-COPY --from=frontend /app/dist ./public
-EXPOSE 3001
-CMD ["npm", "start"]
-```
-
-2. **Deploy com ECS**
+1. **Criar Repositório ECR**
 ```bash
-# Build e push para ECR
 aws ecr create-repository --repository-name pizzaria-quadrada
-docker build -t pizzaria-quadrada .
-docker tag pizzaria-quadrada:latest <account>.dkr.ecr.region.amazonaws.com/pizzaria-quadrada:latest
-docker push <account>.dkr.ecr.region.amazonaws.com/pizzaria-quadrada:latest
-
-# Criar task definition e service no ECS
 ```
 
-## 📊 Monitoramento
-
-### **CloudWatch (AWS)**
-- Logs da aplicação
-- Métricas de performance
-- Alertas automáticos
-
-### **Prisma Studio**
+2. **Construir e Enviar Imagens**
 ```bash
-# Acessar dados em tempo real
-npm run db:studio
+# Fazer login no ECR
+aws ecr get-login-password | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<region>.amazonaws.com
+
+# Construir e enviar imagens
+docker-compose -f docker-compose.prod.yml build
+docker tag pizzaria_backend:latest <aws-account-id>.dkr.ecr.<region>.amazonaws.com/pizzaria-quadrada:backend
+docker tag pizzaria_frontend:latest <aws-account-id>.dkr.ecr.<region>.amazonaws.com/pizzaria-quadrada:frontend
+docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/pizzaria-quadrada:backend
+docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/pizzaria-quadrada:frontend
+```
+
+3. **Criar Cluster ECS e Task Definitions**
+```bash
+# Via console AWS:
+# - Criar cluster ECS
+# - Criar task definitions para backend e frontend
+# - Configurar serviços para cada task
+# - Configurar Application Load Balancer
+```
+
+4. **Configurar RDS e ElastiCache**
+```bash
+# Via console AWS:
+# - Criar instância RDS PostgreSQL
+# - Criar cluster ElastiCache Redis
+# - Configurar security groups
+```
+
+### **Opção 3: AWS Amplify (Frontend) + ECS (Backend)**
+
+1. **Configurar Amplify para Frontend**
+```bash
+# Instalar Amplify CLI
+npm install -g @aws-amplify/cli
+
+# Inicializar Amplify
+amplify init
+
+# Adicionar hospedagem
+amplify add hosting
+
+# Publicar
+amplify publish
+```
+
+2. **Configurar ECS para Backend**
+```bash
+# Seguir passos da Opção 2 apenas para o backend
 ```
 
 ## 🔧 Troubleshooting
@@ -288,11 +239,22 @@ npm run db:generate
 # Adicionar domínio nas origens permitidas
 ```
 
+4. **Problemas com WPPConnect**
+```bash
+# Verificar se o contêiner está rodando
+docker ps | grep wppconnect
+
+# Verificar logs
+docker logs pizzaria_wppconnect
+
+# Reiniciar serviço
+docker restart pizzaria_wppconnect
+```
+
 ## 📞 Suporte
 
 - **Email:** suporte@pizzariaquadrada.com
 - **WhatsApp:** +55 77 99974-2491
-- **Documentação:** [Link para docs]
 
 ---
 

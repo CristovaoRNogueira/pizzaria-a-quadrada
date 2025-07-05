@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, QrCode, Copy, Check, Clock } from 'lucide-react';
+import { X, CreditCard, QrCode, Copy, Check, Clock, AlertCircle } from 'lucide-react';
 import { PaymentInfo } from '../types';
 import { useApp } from '../contexts/AppContext';
 
@@ -8,13 +8,15 @@ interface PaymentModalProps {
   paymentMethod: 'pix' | 'cartao';
   onSuccess: (paymentData: PaymentInfo) => void;
   onClose: () => void;
+  onPixCopied?: () => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ 
   amount, 
   paymentMethod, 
   onSuccess, 
-  onClose 
+  onClose,
+  onPixCopied
 }) => {
   const { state } = useApp();
   const [pixCopied, setPixCopied] = useState(false);
@@ -27,6 +29,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     name: ''
   });
   const [paymentTimer, setPaymentTimer] = useState(0);
+  const [showPixInstructions, setShowPixInstructions] = useState(true);
 
   // Timer para simular verificação de pagamento PIX
   useEffect(() => {
@@ -63,6 +66,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       await navigator.clipboard.writeText(generatePixCode());
       setPixCopied(true);
       setPaymentTimer(30); // Iniciar timer de 30 segundos
+      setShowPixInstructions(false);
+      if (onPixCopied) {
+        onPixCopied();
+      }
       setTimeout(() => setPixCopied(false), 2000);
     } catch (error) {
       console.error('Erro ao copiar código PIX:', error);
@@ -73,7 +80,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     onSuccess({
       method: 'pix',
       pixCode: generatePixCode(),
-      pixPaid: true
+      pixPaid: true,
+      pixCopied: true
     });
   };
 
@@ -127,6 +135,24 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
           {paymentMethod === 'pix' ? (
             <div className="space-y-4">
+              {showPixInstructions && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-800 mb-2">Como pagar com PIX:</h4>
+                      <ol className="text-sm text-blue-700 space-y-1">
+                        <li>1. Copie o código PIX abaixo</li>
+                        <li>2. Abra o app do seu banco</li>
+                        <li>3. Escolha a opção PIX Copia e Cola</li>
+                        <li>4. Cole o código e confirme o pagamento</li>
+                        <li>5. Aguarde a confirmação automática</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="text-center">
                 <div className="bg-gray-100 p-4 rounded-lg mb-4">
                   <QrCode className="h-32 w-32 mx-auto text-gray-400 mb-2" />
@@ -158,15 +184,21 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                       <span>{pixCopied ? 'Código Copiado!' : 'Copiar Código PIX'}</span>
                     </button>
                     
-                    <p className="text-sm text-gray-600 mb-4">
-                      Após realizar o pagamento, a confirmação será automática em alguns segundos.
-                    </p>
+                    {pixCopied && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ <strong>Importante:</strong> Realize o pagamento PIX antes de finalizar o pedido. 
+                          A confirmação será automática em alguns segundos após o pagamento.
+                        </p>
+                      </div>
+                    )}
                     
                     <button
                       onClick={handlePixPayment}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                      disabled={!pixCopied}
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-medium transition-colors"
                     >
-                      Já Paguei - Confirmar Manualmente
+                      {pixCopied ? 'Já Paguei - Confirmar' : 'Copie o código PIX primeiro'}
                     </button>
                   </>
                 ) : (

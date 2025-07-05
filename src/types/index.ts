@@ -33,6 +33,7 @@ export interface Customer {
   address: string;
   neighborhood: string;
   reference?: string;
+  notes?: string; // Campo de observações
   location?: {
     lat: number;
     lng: number;
@@ -46,8 +47,10 @@ export interface PaymentInfo {
   changeAmount?: number;
   pixCode?: string;
   pixPaid?: boolean;
+  pixCopied?: boolean; // Para controlar se o código foi copiado
   cardType?: 'credito' | 'debito';
   stripePaymentIntentId?: string;
+  confirmed?: boolean; // Para marcar pagamento como confirmado
 }
 
 export interface Order {
@@ -80,9 +83,44 @@ export interface PaymentSettings {
   acceptCard: boolean;
 }
 
+export interface EstablishmentInfo {
+  name: string;
+  phone: string;
+  instagram: string;
+  address: string;
+  email: string;
+}
+
 export interface BusinessSettings {
   businessHours: BusinessHours[];
   isOpen: boolean;
   closedMessage: string;
   payment: PaymentSettings;
+  establishment: EstablishmentInfo;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'operator' | 'delivery';
+  permissions: {
+    canDeleteOrders: boolean;
+    canAccessSettings: boolean;
+    canAccessDashboard: boolean;
+    canAccessOrders: boolean;
+    canAccessMenu: boolean;
+    canAccessPromotions: boolean;
+    canAccessUsers: boolean;
+  };
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface OrderTracking {
+  orderId: string;
+  customerPhone: string;
+  status: OrderStatus;
+  estimatedTime?: number;
+  lastUpdate: Date;
 }

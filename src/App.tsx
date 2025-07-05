@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './contexts/AppContext';
 import Header from './components/Header';
 import Menu from './components/Menu';
 import Cart from './components/Cart';
+import OrderTracking from './components/OrderTracking';
 import AdminRoute from './components/AdminRoute';
 import Notifications from './components/Notifications';
 
@@ -22,6 +23,8 @@ const AppContent: React.FC = () => {
         return <Menu />;
       case 'cart':
         return <Cart />;
+      case 'tracking':
+        return <OrderTracking />;
       default:
         return <Menu />;
     }
@@ -29,7 +32,7 @@ const AppContent: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isAdminRoute && <Header />}
+      {!isAdminRoute && state.currentView !== 'tracking' && <Header />}
       <main>
         {renderCurrentView()}
       </main>

@@ -14,6 +14,7 @@ import {
   BusinessSettings,
   BusinessHours,
   PaymentSettings,
+  EstablishmentInfo,
 } from "../types";
 import { pizzas as initialPizzas } from "../data/pizzas";
 import { whatsappService } from "../services/whatsapp";
@@ -22,14 +23,15 @@ import { apiService } from "../services/api";
 interface AppState {
   cart: CartItem[];
   orders: Order[];
-  currentView: "menu" | "cart" | "admin";
+  currentView: "menu" | "cart" | "admin" | "tracking";
   notifications: string[];
   pizzas: Pizza[];
   showBeverageSuggestions: boolean;
   lastAddedPizza: Pizza | null;
   businessSettings: BusinessSettings;
   isLoading: boolean;
-  isSubmittingOrder: boolean; // Novo estado para controlar submissão
+  isSubmittingOrder: boolean;
+  trackingOrderId: string | null;
 }
 
 type AppAction =
@@ -40,7 +42,7 @@ type AppAction =
       payload: { id: string; quantity: number; size: string };
     }
   | { type: "CLEAR_CART" }
-  | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" }
+  | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" | "tracking" }
   | { type: "CREATE_ORDER"; payload: Order }
   | {
       type: "UPDATE_ORDER_STATUS";
@@ -55,11 +57,15 @@ type AppAction =
   | { type: "HIDE_BEVERAGE_SUGGESTIONS" }
   | { type: "UPDATE_BUSINESS_SETTINGS"; payload: Partial<BusinessSettings> }
   | { type: "UPDATE_PAYMENT_SETTINGS"; payload: PaymentSettings }
+  | { type: "UPDATE_ESTABLISHMENT_SETTINGS"; payload: EstablishmentInfo }
   | { type: "LOAD_BUSINESS_SETTINGS"; payload: BusinessSettings }
   | { type: "SET_PIZZAS"; payload: Pizza[] }
   | { type: "SET_ORDERS"; payload: Order[] }
   | { type: "SET_LOADING"; payload: boolean }
-  | { type: "SET_SUBMITTING_ORDER"; payload: boolean };
+  | { type: "SET_SUBMITTING_ORDER"; payload: boolean }
+  | { type: "SET_ORDER_TRACKING"; payload: string | null }
+  | { type: "CONFIRM_PAYMENT"; payload: string }
+  | { type: "DELETE_ORDER"; payload: string };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -81,12 +87,21 @@ export const defaultPaymentSettings: PaymentSettings = {
   acceptCard: false,
 };
 
+const defaultEstablishmentInfo: EstablishmentInfo = {
+  name: "Pizzaria a Quadrada",
+  phone: "+55 77 99974-2491",
+  instagram: "@pizzariaquadrada",
+  address: "Rua das Pizzas, 123 - Centro, Vitória da Conquista - BA",
+  email: "contato@pizzariaquadrada.com",
+};
+
 const defaultBusinessSettings: BusinessSettings = {
   businessHours: defaultBusinessHours,
   isOpen: true,
   closedMessage:
     "Estamos fechados no momento. Nosso horário de funcionamento é das 18:00 às 23:00.",
   payment: defaultPaymentSettings,
+  establishment: defaultEstablishmentInfo,
 };
 
 // Função para carregar configurações do localStorage (fallback)
@@ -101,6 +116,10 @@ const loadBusinessSettings = (): BusinessSettings => {
         payment: {
           ...defaultPaymentSettings,
           ...parsed.payment,
+        },
+        establishment: {
+          ...defaultEstablishmentInfo,
+          ...parsed.establishment,
         },
       };
     }
@@ -133,6 +152,7 @@ const initialState: AppState = {
   businessSettings: loadBusinessSettings(),
   isLoading: false,
   isSubmittingOrder: false,
+  trackingOrderId: null,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -148,6 +168,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
     case "SET_ORDERS":
       return { ...state, orders: action.payload };
+
+    case "SET_ORDER_TRACKING":
+      return { ...state, trackingOrderId: action.payload };
 
     case "ADD_TO_CART":
       const existingItemIndex = state.cart.findIndex(
@@ -207,7 +230,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, currentView: action.payload };
 
     case "CREATE_ORDER":
-      // Evitar duplicação - só processar se não estiver já submetendo
       if (state.isSubmittingOrder) {
         console.log("⚠️ Pedido já está sendo processado, ignorando duplicação");
         return state;
@@ -215,7 +237,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
       console.log("CREATE_ORDER action triggered with payload:", action.payload);
 
-      // Preparar dados para envio ao backend (apenas uma vez)
       const orderToSend = {
         customer: {
           name: action.payload.customer.name,
@@ -223,6 +244,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           address: action.payload.customer.address || "",
           neighborhood: action.payload.customer.neighborhood || "",
           reference: action.payload.customer.reference || "",
+          notes: action.payload.customer.notes || "",
           deliveryType: action.payload.customer.deliveryType,
           location: action.payload.customer.location,
         },
@@ -246,13 +268,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           needsChange: action.payload.payment.needsChange || false,
           changeAmount: action.payload.payment.changeAmount,
           pixCode: action.payload.payment.pixCode,
+          pixCopied: action.payload.payment.pixCopied,
           stripePaymentIntentId: action.payload.payment.stripePaymentIntentId,
         },
       };
 
       console.log("Dados preparados para envio ao backend:", orderToSend);
 
-      // Enviar pedido para o backend de forma assíncrona (apenas uma vez)
       apiService
         .createOrder(orderToSend)
         .then((response) => {
@@ -263,7 +285,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           console.error("Detalhes do erro:", error.response?.data || error.message);
         });
 
-      // Send WhatsApp notification for new order
       setTimeout(async () => {
         try {
           await whatsappService.sendOrderNotification(
@@ -275,15 +296,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         }
       }, 1000);
 
-      // Retornar estado atualizado apenas no frontend (não duplicar no backend)
       return {
         ...state,
-        cart: [], // Limpar carrinho após criar pedido
-        orders: [...state.orders, action.payload], // Adicionar ao estado local
+        cart: [],
+        orders: [...state.orders, action.payload],
       };
 
     case "UPDATE_ORDER_STATUS":
-      // Enviar atualização para o backend
       apiService
         .updateOrderStatus(action.payload.id, action.payload.status)
         .then(() => {
@@ -302,6 +321,25 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
 
+    case "CONFIRM_PAYMENT":
+      return {
+        ...state,
+        orders: state.orders.map((order) =>
+          order.id === action.payload
+            ? { 
+                ...order, 
+                payment: { ...order.payment, confirmed: true }
+              }
+            : order
+        ),
+      };
+
+    case "DELETE_ORDER":
+      return {
+        ...state,
+        orders: state.orders.filter((order) => order.id !== action.payload),
+      };
+
     case "ADD_NOTIFICATION":
       return {
         ...state,
@@ -317,7 +355,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
 
     case "ADD_PIZZA":
-      // Enviar para o backend
       const pizzaToCreate = {
         name: action.payload.name,
         description: action.payload.description,
@@ -331,7 +368,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         .createPizza(pizzaToCreate)
         .then((response) => {
           console.log("Pizza criada no backend:", response);
-          // Recarregar pizzas
           apiService
             .getPizzas()
             .then((pizzas) => {
@@ -351,7 +387,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
 
     case "UPDATE_PIZZA":
-      // Enviar para o backend
       const pizzaToUpdate = {
         name: action.payload.name,
         description: action.payload.description,
@@ -378,7 +413,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
 
     case "DELETE_PIZZA":
-      // Enviar para o backend
       apiService
         .deletePizza(action.payload)
         .then(() => {
@@ -418,10 +452,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state.businessSettings,
         ...action.payload,
       };
-      // Salvar no localStorage como fallback
       saveBusinessSettings(updatedSettings);
 
-      // Enviar para o backend
       apiService.updateBusinessSettings(updatedSettings).catch((error) => {
         console.error("Erro ao salvar configurações no backend:", error);
       });
@@ -436,10 +468,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state.businessSettings,
         payment: action.payload,
       };
-      // Salvar no localStorage como fallback
       saveBusinessSettings(updatedBusinessSettings);
 
-      // Enviar para o backend
       apiService
         .updateBusinessSettings(updatedBusinessSettings)
         .catch((error) => {
@@ -449,6 +479,24 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         businessSettings: updatedBusinessSettings,
+      };
+
+    case "UPDATE_ESTABLISHMENT_SETTINGS":
+      const updatedEstablishmentSettings = {
+        ...state.businessSettings,
+        establishment: action.payload,
+      };
+      saveBusinessSettings(updatedEstablishmentSettings);
+
+      apiService
+        .updateBusinessSettings(updatedEstablishmentSettings)
+        .catch((error) => {
+          console.error("Erro ao salvar configurações no backend:", error);
+        });
+
+      return {
+        ...state,
+        businessSettings: updatedEstablishmentSettings,
       };
 
     default:
@@ -466,7 +514,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Carregar dados do backend na inicialização
   useEffect(() => {
     const loadData = async () => {
       dispatch({ type: "SET_LOADING", payload: true });
@@ -474,17 +521,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       try {
         console.log("🔄 Carregando dados do backend...");
 
-        // Carregar pizzas
         const pizzas = await apiService.getPizzas();
         console.log("✅ Pizzas carregadas:", pizzas.length);
         dispatch({ type: "SET_PIZZAS", payload: pizzas });
 
-        // Carregar configurações de negócio
         const businessSettings = await apiService.getBusinessSettings();
         console.log("✅ Configurações carregadas");
         dispatch({ type: "LOAD_BUSINESS_SETTINGS", payload: businessSettings });
 
-        // Carregar pedidos (apenas se for admin)
         if (localStorage.getItem("admin_authenticated") === "true") {
           try {
             const orders = await apiService.getOrders();
@@ -510,7 +554,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     loadData();
   }, []);
 
-  // Recarregar pedidos quando o usuário faz login como admin
   useEffect(() => {
     const loadOrders = async () => {
       if (localStorage.getItem("admin_authenticated") === "true") {
@@ -525,7 +568,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       }
     };
 
-    // Verificar se o usuário acabou de fazer login
     const checkAuthChange = () => {
       if (
         localStorage.getItem("admin_authenticated") === "true" &&
@@ -535,10 +577,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       }
     };
 
-    // Verificar mudanças na autenticação
     window.addEventListener("storage", checkAuthChange);
 
-    // Verificar imediatamente se já está autenticado
     if (
       localStorage.getItem("admin_authenticated") === "true" &&
       state.orders.length === 0
@@ -551,7 +591,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, [state.orders.length]);
 
-  // Polling para recarregar pedidos periodicamente quando admin está logado
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
@@ -563,7 +602,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
         } catch (error) {
           console.error("Erro no polling de pedidos:", error);
         }
-      }, 30000); // Recarregar a cada 30 segundos
+      }, 30000);
     }
 
     return () => {

@@ -10,6 +10,7 @@ import {
   CreditCard,
   Banknote,
   QrCode,
+  MessageSquare,
 } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { Customer, PaymentInfo } from "../types";
@@ -25,12 +26,14 @@ const Cart: React.FC = () => {
     address: "",
     neighborhood: "",
     reference: "",
+    notes: "",
     deliveryType: "delivery",
   });
   const [payment, setPayment] = useState<PaymentInfo>({
     method: "dinheiro",
   });
   const [phoneError, setPhoneError] = useState("");
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const total = state.cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -79,6 +82,8 @@ const Cart: React.FC = () => {
   };
 
   const getCurrentLocation = () => {
+    setLocationStatus('loading');
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -89,6 +94,7 @@ const Cart: React.FC = () => {
               lng: position.coords.longitude,
             },
           });
+          setLocationStatus('success');
           dispatch({
             type: "ADD_NOTIFICATION",
             payload: "Localização capturada com sucesso!",
@@ -96,13 +102,20 @@ const Cart: React.FC = () => {
         },
         (error) => {
           console.error("Erro ao obter localização:", error);
+          setLocationStatus('error');
           dispatch({
             type: "ADD_NOTIFICATION",
             payload: "Erro ao obter localização. Verifique as permissões.",
           });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
         }
       );
     } else {
+      setLocationStatus('error');
       dispatch({
         type: "ADD_NOTIFICATION",
         payload: "Geolocalização não suportada pelo navegador.",
@@ -113,7 +126,6 @@ const Cart: React.FC = () => {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Verificar se já está submetendo para evitar duplicação
     if (state.isSubmittingOrder) {
       console.log("⚠️ Pedido já está sendo processado");
       return;
@@ -134,7 +146,15 @@ const Cart: React.FC = () => {
       return;
     }
 
-    // Marcar como submetendo
+    // Para PIX, verificar se o código foi copiado
+    if (payment.method === "pix" && !payment.pixCopied) {
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Copie o código PIX antes de finalizar o pedido!",
+      });
+      return;
+    }
+
     dispatch({ type: "SET_SUBMITTING_ORDER", payload: true });
 
     try {
@@ -148,6 +168,7 @@ const Cart: React.FC = () => {
           address: customer.address || "",
           neighborhood: customer.neighborhood || "",
           reference: customer.reference || "",
+          notes: customer.notes || "",
           deliveryType: customer.deliveryType,
           location: customer.location,
         },
@@ -173,6 +194,7 @@ const Cart: React.FC = () => {
           needsChange: payment.needsChange || false,
           changeAmount: payment.changeAmount,
           pixCode: payment.pixCode,
+          pixCopied: payment.pixCopied,
           stripePaymentIntentId: payment.stripePaymentIntentId,
         },
       };
@@ -182,9 +204,11 @@ const Cart: React.FC = () => {
         type: "ADD_NOTIFICATION",
         payload: "Pedido enviado com sucesso!",
       });
-      dispatch({ type: "SET_VIEW", payload: "menu" });
+      
+      // Redirecionar para página de acompanhamento
+      dispatch({ type: "SET_ORDER_TRACKING", payload: order.id });
+      dispatch({ type: "SET_VIEW", payload: "tracking" });
 
-      // Simulate WhatsApp notification
       setTimeout(() => {
         dispatch({
           type: "ADD_NOTIFICATION",
@@ -198,7 +222,6 @@ const Cart: React.FC = () => {
         payload: "Erro ao enviar pedido. Tente novamente.",
       });
     } finally {
-      // Desmarcar como submetendo
       dispatch({ type: "SET_SUBMITTING_ORDER", payload: false });
     }
   };
@@ -207,7 +230,6 @@ const Cart: React.FC = () => {
     setPayment(paymentData);
     setShowPayment(false);
 
-    // Verificar se já está submetendo para evitar duplicação
     if (state.isSubmittingOrder) {
       console.log("⚠️ Pedido já está sendo processado");
       return;
@@ -224,6 +246,7 @@ const Cart: React.FC = () => {
           address: customer.address || "",
           neighborhood: customer.neighborhood || "",
           reference: customer.reference || "",
+          notes: customer.notes || "",
           deliveryType: customer.deliveryType,
           location: customer.location,
         },
@@ -252,7 +275,10 @@ const Cart: React.FC = () => {
         type: "ADD_NOTIFICATION",
         payload: "Pedido e pagamento processados com sucesso!",
       });
-      dispatch({ type: "SET_VIEW", payload: "menu" });
+      
+      // Redirecionar para página de acompanhamento
+      dispatch({ type: "SET_ORDER_TRACKING", payload: order.id });
+      dispatch({ type: "SET_VIEW", payload: "tracking" });
     } catch (error) {
       console.error("Erro ao processar pagamento:", error);
       dispatch({
@@ -458,14 +484,26 @@ const Cart: React.FC = () => {
                   <button
                     type="button"
                     onClick={getCurrentLocation}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                    disabled={locationStatus === 'loading'}
+                    className={`w-full py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
+                      locationStatus === 'success' 
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : locationStatus === 'error'
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
                     <MapPin className="h-4 w-4" />
-                    <span>Compartilhar Localização</span>
+                    <span>
+                      {locationStatus === 'loading' && 'Obtendo Localização...'}
+                      {locationStatus === 'success' && '✓ Localização Capturada'}
+                      {locationStatus === 'error' && 'Tentar Novamente'}
+                      {locationStatus === 'idle' && 'Compartilhar Localização'}
+                    </span>
                   </button>
                   {customer.location && (
-                    <p className="text-green-600 text-sm mt-1">
-                      ✓ Localização capturada
+                    <p className="text-green-600 text-sm mt-1 text-center">
+                      ✓ Localização: {customer.location.lat.toFixed(6)}, {customer.location.lng.toFixed(6)}
                     </p>
                   )}
                 </div>
@@ -486,6 +524,23 @@ const Cart: React.FC = () => {
                 </p>
               </div>
             )}
+
+            {/* Campo de Observações */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <MessageSquare className="h-4 w-4 inline mr-1" />
+                Observações do Pedido
+              </label>
+              <textarea
+                value={customer.notes}
+                onChange={(e) =>
+                  setCustomer({ ...customer, notes: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                rows={3}
+                placeholder="Ex: sem borda, retirar cebola, ponto da carne, etc."
+              />
+            </div>
 
             {/* Payment Method Selection */}
             <div>
@@ -649,6 +704,7 @@ const Cart: React.FC = () => {
             paymentMethod={payment.method as 'pix' | 'cartao'}
             onSuccess={handlePaymentSuccess}
             onClose={() => setShowPayment(false)}
+            onPixCopied={() => setPayment({ ...payment, pixCopied: true })}
           />
         )}
       </div>
