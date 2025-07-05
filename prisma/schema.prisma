@@ -51,7 +51,7 @@ model Customer {
 }
 
 model Order {
-  id         String      @id @default(cuid())
+  id         Int         @id @default(autoincrement())
   customerId String
   total      Float
   status     OrderStatus @default(NEW)
@@ -75,7 +75,7 @@ model Order {
 
 model OrderItem {
   id              String   @id @default(cuid())
-  orderId         String
+  orderId         Int
   pizzaId         String
   quantity        Int
   selectedSize    String // 'small' | 'medium' | 'large' | 'family'

@@ -239,7 +239,7 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
 
     // Converter para o formato esperado pelo frontend
     const formattedOrders = orders.map((order) => ({
-      id: order.id,
+      id: order.id.toString(), // Converter ID inteiro para string para compatibilidade
       customer: {
         name: order.customer.name,
         phone: order.customer.phone,
@@ -329,6 +329,33 @@ app.post("/api/orders", async (req, res) => {
     }
 
     console.log("✅ Validação dos dados concluída");
+
+    // Verificar se já existe um pedido recente com os mesmos dados (evitar duplicação)
+    const recentOrder = await prisma.order.findFirst({
+      where: {
+        total: total,
+        createdAt: {
+          gte: new Date(Date.now() - 60000), // Últimos 60 segundos
+        },
+      },
+      include: {
+        customer: true,
+      },
+    });
+
+    if (recentOrder && recentOrder.customer.phone === customer.phone) {
+      console.log("⚠️ Pedido duplicado detectado, retornando pedido existente");
+      return res.json({
+        id: recentOrder.id,
+        message: "Pedido já foi criado",
+        order: {
+          id: recentOrder.id,
+          total: recentOrder.total,
+          status: recentOrder.status,
+          createdAt: recentOrder.createdAt,
+        },
+      });
+    }
 
     // Criar ou encontrar cliente
     console.log("🔍 Buscando/criando cliente...");
@@ -431,7 +458,7 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
     console.log("Atualizando status do pedido:", { id, status });
 
     const order = await prisma.order.update({
-      where: { id },
+      where: { id: parseInt(id) }, // Converter para inteiro
       data: { status: status.toUpperCase() },
     });
 

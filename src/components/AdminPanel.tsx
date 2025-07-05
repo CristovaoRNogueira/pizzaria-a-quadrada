@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Clock,
   CheckCircle,
@@ -17,18 +17,14 @@ import {
   Coffee,
   Home,
   BarChart3,
-  TrendingUp,
-  Users,
-  DollarSign,
-  Calendar,
 } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { OrderStatus, Pizza, CartItem } from "../types/index";
 import { whatsappService } from "../services/whatsapp";
-import { apiService } from "../services/api";
 import WhatsAppStatus from "./WhatsAppStatus";
 import BusinessHoursManager from "./BusinessHoursManager";
 import PaymentSettings from "./PaymentSettings";
+import AdminDashboard from "./AdminDashboard";
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -58,63 +54,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     ingredients: [],
     sizes: { small: 35.0, medium: 35.0, large: 55.0, family: 65.0 },
   });
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Dashboard stats
-  const [dashboardStats, setDashboardStats] = useState({
-    totalOrders: 0,
-    todayOrders: 0,
-    totalRevenue: 0,
-    todayRevenue: 0,
-    averageOrderValue: 0,
-    popularItems: [] as Array<{ name: string; count: number }>,
-  });
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = () => {
-    // Calculate dashboard statistics
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const todayOrders = state.orders.filter(
-      (order) => new Date(order.createdAt) >= today
-    );
-
-    const totalRevenue = state.orders.reduce(
-      (sum, order) => sum + order.total,
-      0
-    );
-    const todayRevenue = todayOrders.reduce(
-      (sum, order) => sum + order.total,
-      0
-    );
-
-    // Calculate popular items
-    const itemCounts: { [key: string]: number } = {};
-    state.orders.forEach((order) => {
-      order.items.forEach((item) => {
-        itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
-      });
-    });
-
-    const popularItems = Object.entries(itemCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([name, count]) => ({ name, count }));
-
-    setDashboardStats({
-      totalOrders: state.orders.length,
-      todayOrders: todayOrders.length,
-      totalRevenue,
-      todayRevenue,
-      averageOrderValue:
-        state.orders.length > 0 ? totalRevenue / state.orders.length : 0,
-      popularItems,
-    });
-  };
 
   const statusLabels = {
     new: "Novo Pedido",
@@ -144,50 +83,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     orderId: string,
     newStatus: OrderStatus
   ) => {
-    try {
-      setIsLoading(true);
-      await apiService.updateOrderStatus(orderId, newStatus);
+    dispatch({
+      type: "UPDATE_ORDER_STATUS",
+      payload: { id: orderId, status: newStatus },
+    });
 
-      dispatch({
-        type: "UPDATE_ORDER_STATUS",
-        payload: { id: orderId, status: newStatus },
-      });
-
-      const order = state.orders.find((o) => o.id === orderId);
-      if (order) {
-        try {
-          const success = await whatsappService.sendStatusUpdate(
-            order.customer.phone,
-            newStatus,
-            order
-          );
-          if (success) {
-            dispatch({
-              type: "ADD_NOTIFICATION",
-              payload: `📱 Notificação WhatsApp enviada para ${order.customer.name}!`,
-            });
-          } else {
-            dispatch({
-              type: "ADD_NOTIFICATION",
-              payload: "Status atualizado! (WhatsApp: envio manual)",
-            });
-          }
-        } catch (error) {
-          console.error("Erro ao enviar WhatsApp:", error);
+    const order = state.orders.find((o) => o.id === orderId);
+    if (order) {
+      try {
+        const success = await whatsappService.sendStatusUpdate(
+          order.customer.phone,
+          newStatus,
+          order
+        );
+        if (success) {
           dispatch({
             type: "ADD_NOTIFICATION",
-            payload: "Status atualizado! (WhatsApp indisponível)",
+            payload: `📱 Notificação WhatsApp enviada para ${order.customer.name}!`,
+          });
+        } else {
+          dispatch({
+            type: "ADD_NOTIFICATION",
+            payload: "Status atualizado! (WhatsApp: envio manual)",
           });
         }
+      } catch (error) {
+        console.error("Erro ao enviar WhatsApp:", error);
+        dispatch({
+          type: "ADD_NOTIFICATION",
+          payload: "Status atualizado! (WhatsApp indisponível)",
+        });
       }
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Erro ao atualizar status do pedido!",
-      });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -387,152 +313,70 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     return currentIndex < flow.length - 1 ? flow[currentIndex + 1] : null;
   };
 
-  const handleAddItem = async () => {
-    if (!formData.name || !formData.description || !formData.image) {
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Preencha todos os campos obrigatórios!",
-      });
-      return;
-    }
+  const handleAddItem = () => {
+    if (!formData.name || !formData.description || !formData.image) return;
 
-    try {
-      setIsLoading(true);
+    const newItem: Pizza = {
+      id: Date.now().toString(),
+      name: formData.name,
+      description: formData.description,
+      price: formData.sizes?.medium || 0,
+      image: formData.image,
+      category: formData.category as Pizza["category"],
+      ingredients: formData.ingredients || [],
+      sizes: formData.sizes || {
+        small: 35.0,
+        medium: 35.0,
+        large: 55.0,
+        family: 65.0,
+      },
+    };
 
-      const pizzaData = {
-        name: formData.name,
-        description: formData.description,
-        image: formData.image,
-        category: formData.category,
-        ingredients: formData.ingredients || [],
-        sizes: formData.sizes || {
-          small: 35.0,
-          medium: 35.0,
-          large: 55.0,
-          family: 65.0,
-        },
-      };
-
-      const newPizza = await apiService.createPizza(pizzaData);
-
-      const newItem: Pizza = {
-        id: newPizza.id,
-        name: newPizza.name,
-        description: newPizza.description,
-        price: newPizza.priceMedium || formData.sizes?.medium || 0,
-        image: newPizza.image,
-        category: newPizza.category as Pizza["category"],
-        ingredients: newPizza.ingredients || [],
-        sizes: {
-          small: newPizza.priceSmall || formData.sizes?.small,
-          medium: newPizza.priceMedium || formData.sizes?.medium || 0,
-          large: newPizza.priceLarge || formData.sizes?.large || 0,
-          family: newPizza.priceFamily || formData.sizes?.family || 0,
-        },
-      };
-
-      dispatch({ type: "ADD_PIZZA", payload: newItem });
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Item adicionado ao cardápio com sucesso!",
-      });
-      resetForm();
-    } catch (error) {
-      console.error("Erro ao adicionar item:", error);
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Erro ao adicionar item ao cardápio!",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    dispatch({ type: "ADD_PIZZA", payload: newItem });
+    dispatch({
+      type: "ADD_NOTIFICATION",
+      payload: "Item adicionado ao cardápio!",
+    });
+    resetForm();
   };
 
-  const handleUpdateItem = async () => {
+  const handleUpdateItem = () => {
     if (
       !editingItem ||
       !formData.name ||
       !formData.description ||
       !formData.image
-    ) {
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Preencha todos os campos obrigatórios!",
-      });
+    )
       return;
-    }
 
-    try {
-      setIsLoading(true);
+    const updatedItem: Pizza = {
+      ...editingItem,
+      name: formData.name,
+      description: formData.description,
+      price: formData.sizes?.medium || 0,
+      image: formData.image,
+      category: formData.category as Pizza["category"],
+      ingredients: formData.ingredients || [],
+      sizes: formData.sizes || {
+        small: 35.0,
+        medium: 35.0,
+        large: 55.0,
+        family: 65.0,
+      },
+    };
 
-      const pizzaData = {
-        name: formData.name,
-        description: formData.description,
-        image: formData.image,
-        category: formData.category,
-        ingredients: formData.ingredients || [],
-        sizes: formData.sizes || {
-          small: 35.0,
-          medium: 35.0,
-          large: 55.0,
-          family: 65.0,
-        },
-      };
-
-      await apiService.updatePizza(editingItem.id, pizzaData);
-
-      const updatedItem: Pizza = {
-        ...editingItem,
-        name: formData.name,
-        description: formData.description,
-        price: formData.sizes?.medium || 0,
-        image: formData.image,
-        category: formData.category as Pizza["category"],
-        ingredients: formData.ingredients || [],
-        sizes: formData.sizes || {
-          small: 35.0,
-          medium: 35.0,
-          large: 55.0,
-          family: 65.0,
-        },
-      };
-
-      dispatch({ type: "UPDATE_PIZZA", payload: updatedItem });
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Item atualizado com sucesso!",
-      });
-      resetForm();
-    } catch (error) {
-      console.error("Erro ao atualizar item:", error);
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Erro ao atualizar item!",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    dispatch({ type: "UPDATE_PIZZA", payload: updatedItem });
+    dispatch({ type: "ADD_NOTIFICATION", payload: "Item atualizado!" });
+    resetForm();
   };
 
-  const handleDeleteItem = async (id: string) => {
+  const handleDeleteItem = (id: string) => {
     if (confirm("Tem certeza que deseja excluir este item?")) {
-      try {
-        setIsLoading(true);
-        await apiService.deletePizza(id);
-        dispatch({ type: "DELETE_PIZZA", payload: id });
-        dispatch({
-          type: "ADD_NOTIFICATION",
-          payload: "Item removido do cardápio com sucesso!",
-        });
-      } catch (error) {
-        console.error("Erro ao deletar item:", error);
-        dispatch({
-          type: "ADD_NOTIFICATION",
-          payload: "Erro ao remover item do cardápio!",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      dispatch({ type: "DELETE_PIZZA", payload: id });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Item removido do cardápio!",
+      });
     }
   };
 
@@ -612,204 +456,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   };
 
   const goToMenu = () => {
+    // Navegar para a página principal (menu)
     window.location.href = "/";
   };
-
-  const renderDashboard = () => (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pedidos Hoje</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {dashboardStats.todayOrders}
-              </p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <Calendar className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Total de Pedidos
-              </p>
-              <p className="text-3xl font-bold text-gray-900">
-                {dashboardStats.totalOrders}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <Package className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Receita Hoje</p>
-              <p className="text-3xl font-bold text-gray-900">
-                R$ {dashboardStats.todayRevenue.toFixed(2)}
-              </p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-full">
-              <DollarSign className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Receita Total</p>
-              <p className="text-3xl font-bold text-gray-900">
-                R$ {dashboardStats.totalRevenue.toFixed(2)}
-              </p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts and Popular Items */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Popular Items */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <BarChart3 className="h-5 w-5 mr-2 text-red-600" />
-            Itens Mais Vendidos
-          </h3>
-          <div className="space-y-3">
-            {dashboardStats.popularItems.length > 0 ? (
-              dashboardStats.popularItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="bg-red-600 text-white text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <span className="font-medium text-gray-800">
-                      {item.name}
-                    </span>
-                  </div>
-                  <span className="text-sm font-semibold text-gray-600">
-                    {item.count} vendidos
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">
-                Nenhum item vendido ainda
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Orders */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Clock className="h-5 w-5 mr-2 text-red-600" />
-            Pedidos Recentes
-          </h3>
-          <div className="space-y-3">
-            {state.orders.slice(0, 5).map((order) => {
-              const StatusIcon = statusIcons[order.status];
-              return (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`p-1 rounded-full ${
-                        statusColors[order.status]
-                      }`}
-                    >
-                      <StatusIcon className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-800">#{order.id}</p>
-                      <p className="text-sm text-gray-600">
-                        {order.customer.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-800">
-                      R$ {order.total.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {statusLabels[order.status]}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-            {state.orders.length === 0 && (
-              <p className="text-gray-500 text-center py-4">
-                Nenhum pedido ainda
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Ações Rápidas
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => setActiveTab("orders")}
-            className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center space-x-3"
-          >
-            <Package className="h-6 w-6 text-blue-600" />
-            <div className="text-left">
-              <p className="font-medium text-blue-800">Ver Pedidos</p>
-              <p className="text-sm text-blue-600">Gerenciar pedidos ativos</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("menu")}
-            className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center space-x-3"
-          >
-            <PizzaIcon className="h-6 w-6 text-green-600" />
-            <div className="text-left">
-              <p className="font-medium text-green-800">Gerenciar Cardápio</p>
-              <p className="text-sm text-green-600">Adicionar/editar itens</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("settings")}
-            className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center space-x-3"
-          >
-            <Clock className="h-6 w-6 text-purple-600" />
-            <div className="text-left">
-              <p className="font-medium text-purple-800">Configurações</p>
-              <p className="text-sm text-purple-600">Horários e pagamentos</p>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Update dashboard stats when orders change
-  useEffect(() => {
-    loadDashboardData();
-  }, [state.orders]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -857,6 +506,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
+              <BarChart3 className="h-5 w-5 inline mr-2" />
               Dashboard
             </button>
             <button
@@ -902,18 +552,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
           </div>
         </div>
 
-        {/* Loading Overlay */}
-        {isLoading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
-              <span className="text-gray-700">Processando...</span>
-            </div>
-          </div>
-        )}
-
         {activeTab === "dashboard" ? (
-          renderDashboard()
+          <AdminDashboard />
         ) : activeTab === "settings" ? (
           <div>
             {/* Settings Sub-tabs */}
@@ -1265,8 +905,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                               onClick={() =>
                                 handleStatusChange(order.id, nextStatus)
                               }
-                              disabled={isLoading}
-                              className="flex-1 min-w-[160px] bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                              className="flex-1 min-w-[160px] bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
                             >
                               → {statusLabels[nextStatus]}
                             </button>
@@ -1357,11 +996,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nome *
+                      Nome
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.name || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
@@ -1394,10 +1032,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Descrição *
+                      Descrição
                     </label>
                     <textarea
-                      required
                       value={formData.description || ""}
                       onChange={(e) =>
                         setFormData({
@@ -1412,11 +1049,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      URL da Imagem *
+                      URL da Imagem
                     </label>
                     <input
                       type="url"
-                      required
                       value={formData.image || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, image: e.target.value })
@@ -1462,12 +1098,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Preço Média *
+                          Preço Média
                         </label>
                         <input
                           type="number"
                           step="0.01"
-                          required
                           value={formData.sizes?.medium || ""}
                           onChange={(e) =>
                             setFormData({
@@ -1484,12 +1119,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Preço Grande *
+                          Preço Grande
                         </label>
                         <input
                           type="number"
                           step="0.01"
-                          required
                           value={formData.sizes?.large || ""}
                           onChange={(e) =>
                             setFormData({
@@ -1506,12 +1140,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Preço Família *
+                          Preço Família
                         </label>
                         <input
                           type="number"
                           step="0.01"
-                          required
                           value={formData.sizes?.family || ""}
                           onChange={(e) =>
                             setFormData({
@@ -1529,12 +1162,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                   ) : (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Preço *
+                        Preço
                       </label>
                       <input
                         type="number"
                         step="0.01"
-                        required
                         value={formData.sizes?.medium || ""}
                         onChange={(e) => {
                           const price = parseFloat(e.target.value) || 0;
@@ -1562,8 +1194,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                   </button>
                   <button
                     onClick={editingItem ? handleUpdateItem : handleAddItem}
-                    disabled={isLoading}
-                    className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
                   >
                     <Save className="h-4 w-4" />
                     <span>{editingItem ? "Atualizar" : "Adicionar"}</span>
@@ -1625,8 +1256,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                       </button>
                       <button
                         onClick={() => handleDeleteItem(item.id)}
-                        disabled={isLoading}
-                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span>Excluir</span>

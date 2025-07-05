@@ -206,7 +206,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         action.payload
       );
 
-      // Preparar dados para envio ao backend
+      // Preparar dados para envio ao backend (apenas uma vez)
       const orderToSend = {
         customer: {
           name: action.payload.customer.name,
@@ -243,7 +243,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
       console.log("Dados preparados para envio ao backend:", orderToSend);
 
-      // Enviar pedido para o backend de forma assíncrona
+      // Enviar pedido para o backend de forma assíncrona (apenas uma vez)
       apiService
         .createOrder(orderToSend)
         .then((response) => {
@@ -251,20 +251,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
             "✅ Pedido enviado para o backend com sucesso:",
             response
           );
-
-          // Recarregar pedidos se for admin
-          if (localStorage.getItem("admin_authenticated") === "true") {
-            apiService
-              .getOrders()
-              .then((orders) => {
-                console.log("Pedidos recarregados:", orders);
-                // Aqui você pode disparar outro action para atualizar os pedidos
-                // Mas como estamos dentro do reducer, vamos fazer isso no useEffect
-              })
-              .catch((error) => {
-                console.error("Erro ao recarregar pedidos:", error);
-              });
-          }
         })
         .catch((error) => {
           console.error("❌ Erro ao enviar pedido para o backend:", error);
@@ -286,10 +272,10 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         }
       }, 1000);
 
+      // Retornar estado atualizado apenas no frontend (não duplicar no backend)
       return {
         ...state,
-        orders: [...state.orders, action.payload],
-        cart: [],
+        cart: [], // Limpar carrinho após criar pedido
       };
 
     case "UPDATE_ORDER_STATUS":
