@@ -17,6 +17,8 @@ import {
   Coffee,
   Home,
   BarChart3,
+  Send,
+  Users,
 } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { OrderStatus, Pizza, CartItem } from "../types/index";
@@ -25,6 +27,7 @@ import WhatsAppStatus from "./WhatsAppStatus";
 import BusinessHoursManager from "./BusinessHoursManager";
 import PaymentSettings from "./PaymentSettings";
 import AdminDashboard from "./AdminDashboard";
+import PromotionManager from "./PromotionManager";
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -33,7 +36,7 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "orders" | "menu" | "whatsapp" | "settings"
+    "dashboard" | "orders" | "menu" | "whatsapp" | "settings" | "promotions"
   >("dashboard");
   const [activeOrderTab, setActiveOrderTab] = useState<
     "new" | "accepted" | "production" | "delivery" | "completed" | "all"
@@ -530,6 +533,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               Cardápio
             </button>
             <button
+              onClick={() => setActiveTab("promotions")}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === "promotions"
+                  ? "bg-red-600 text-white shadow-md"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Send className="h-5 w-5 inline mr-2" />
+              Promoções
+            </button>
+            <button
               onClick={() => setActiveTab("whatsapp")}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 activeTab === "whatsapp"
@@ -554,6 +568,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
         {activeTab === "dashboard" ? (
           <AdminDashboard />
+        ) : activeTab === "promotions" ? (
+          <PromotionManager />
         ) : activeTab === "settings" ? (
           <div>
             {/* Settings Sub-tabs */}

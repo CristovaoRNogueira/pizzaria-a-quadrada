@@ -29,6 +29,7 @@ interface AppState {
   lastAddedPizza: Pizza | null;
   businessSettings: BusinessSettings;
   isLoading: boolean;
+  isSubmittingOrder: boolean; // Novo estado para controlar submissão
 }
 
 type AppAction =
@@ -57,7 +58,8 @@ type AppAction =
   | { type: "LOAD_BUSINESS_SETTINGS"; payload: BusinessSettings }
   | { type: "SET_PIZZAS"; payload: Pizza[] }
   | { type: "SET_ORDERS"; payload: Order[] }
-  | { type: "SET_LOADING"; payload: boolean };
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_SUBMITTING_ORDER"; payload: boolean };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -130,12 +132,16 @@ const initialState: AppState = {
   lastAddedPizza: null,
   businessSettings: loadBusinessSettings(),
   isLoading: false,
+  isSubmittingOrder: false,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case "SET_LOADING":
       return { ...state, isLoading: action.payload };
+
+    case "SET_SUBMITTING_ORDER":
+      return { ...state, isSubmittingOrder: action.payload };
 
     case "SET_PIZZAS":
       return { ...state, pizzas: action.payload };
@@ -201,10 +207,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, currentView: action.payload };
 
     case "CREATE_ORDER":
-      console.log(
-        "CREATE_ORDER action triggered with payload:",
-        action.payload
-      );
+      // Evitar duplicação - só processar se não estiver já submetendo
+      if (state.isSubmittingOrder) {
+        console.log("⚠️ Pedido já está sendo processado, ignorando duplicação");
+        return state;
+      }
+
+      console.log("CREATE_ORDER action triggered with payload:", action.payload);
 
       // Preparar dados para envio ao backend (apenas uma vez)
       const orderToSend = {
@@ -247,17 +256,11 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       apiService
         .createOrder(orderToSend)
         .then((response) => {
-          console.log(
-            "✅ Pedido enviado para o backend com sucesso:",
-            response
-          );
+          console.log("✅ Pedido enviado para o backend com sucesso:", response);
         })
         .catch((error) => {
           console.error("❌ Erro ao enviar pedido para o backend:", error);
-          console.error(
-            "Detalhes do erro:",
-            error.response?.data || error.message
-          );
+          console.error("Detalhes do erro:", error.response?.data || error.message);
         });
 
       // Send WhatsApp notification for new order
@@ -276,6 +279,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         cart: [], // Limpar carrinho após criar pedido
+        orders: [...state.orders, action.payload], // Adicionar ao estado local
       };
 
     case "UPDATE_ORDER_STATUS":

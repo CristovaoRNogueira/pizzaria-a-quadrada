@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: pizzaria_postgres
+    environment:
+      POSTGRES_USER: pizzaria
+      POSTGRES_PASSWORD: pizzaria123
+      POSTGRES_DB: pizzaria_quadrada
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pizzaria_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: pizzaria_backend
+    environment:
+      DATABASE_URL: "postgresql://pizzaria:pizzaria123@postgres:5432/pizzaria_quadrada?schema=public"
+      JWT_SECRET: "your-super-secret-jwt-key-here"
+      ADMIN_EMAIL: "admin@pizzariaquadrada.com"
+      ADMIN_PASSWORD: "pizzaria2024"
+      WHATSAPP_API_URL: "http://localhost:21465"
+      WHATSAPP_SESSION: "pizzaria-quadrada"
+      PIX_KEY: "77999742491"
+      PIX_NAME: "Pizzaria a Quadrada"
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+    volumes:
+      - ./prisma:/app/prisma
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: pizzaria_frontend
+    environment:
+      VITE_API_URL: "http://localhost:3001/api"
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - pizzaria_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  pizzaria_network:
+    driver: bridge

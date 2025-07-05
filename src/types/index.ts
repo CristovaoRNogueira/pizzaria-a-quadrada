@@ -45,6 +45,8 @@ export interface PaymentInfo {
   needsChange?: boolean;
   changeAmount?: number;
   pixCode?: string;
+  pixPaid?: boolean;
+  cardType?: 'credito' | 'debito';
   stripePaymentIntentId?: string;
 }
 

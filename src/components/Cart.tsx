@@ -19,7 +19,6 @@ const Cart: React.FC = () => {
   const { state, dispatch } = useApp();
   const [showCheckout, setShowCheckout] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [customer, setCustomer] = useState<Customer>({
     name: "",
     phone: "",
@@ -114,7 +113,11 @@ const Cart: React.FC = () => {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isSubmitting) return;
+    // Verificar se já está submetendo para evitar duplicação
+    if (state.isSubmittingOrder) {
+      console.log("⚠️ Pedido já está sendo processado");
+      return;
+    }
 
     if (!validatePhone(customer.phone)) {
       return;
@@ -131,12 +134,14 @@ const Cart: React.FC = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    // Marcar como submetendo
+    dispatch({ type: "SET_SUBMITTING_ORDER", payload: true });
 
     try {
       console.log("Iniciando criação do pedido...");
 
-      const orderData = {
+      const order = {
+        id: Date.now().toString(),
         customer: {
           name: customer.name,
           phone: customer.phone,
@@ -161,6 +166,8 @@ const Cart: React.FC = () => {
           price: item.price,
         })),
         total,
+        status: "new" as const,
+        createdAt: new Date(),
         payment: {
           method: payment.method,
           needsChange: payment.needsChange || false,
@@ -168,19 +175,6 @@ const Cart: React.FC = () => {
           pixCode: payment.pixCode,
           stripePaymentIntentId: payment.stripePaymentIntentId,
         },
-      };
-
-      console.log("Dados do pedido preparados:", orderData);
-
-      // Criar pedido via dispatch (que enviará para o backend)
-      const order = {
-        id: Date.now().toString(),
-        customer: orderData.customer,
-        items: orderData.items,
-        total: orderData.total,
-        status: "new" as const,
-        createdAt: new Date(),
-        payment: orderData.payment,
       };
 
       dispatch({ type: "CREATE_ORDER", payload: order });
@@ -204,7 +198,8 @@ const Cart: React.FC = () => {
         payload: "Erro ao enviar pedido. Tente novamente.",
       });
     } finally {
-      setIsSubmitting(false);
+      // Desmarcar como submetendo
+      dispatch({ type: "SET_SUBMITTING_ORDER", payload: false });
     }
   };
 
@@ -212,11 +207,17 @@ const Cart: React.FC = () => {
     setPayment(paymentData);
     setShowPayment(false);
 
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    // Verificar se já está submetendo para evitar duplicação
+    if (state.isSubmittingOrder) {
+      console.log("⚠️ Pedido já está sendo processado");
+      return;
+    }
+
+    dispatch({ type: "SET_SUBMITTING_ORDER", payload: true });
 
     try {
-      const orderData = {
+      const order = {
+        id: Date.now().toString(),
         customer: {
           name: customer.name,
           phone: customer.phone,
@@ -241,14 +242,6 @@ const Cart: React.FC = () => {
           price: item.price,
         })),
         total,
-        payment: paymentData,
-      };
-
-      const order = {
-        id: Date.now().toString(),
-        customer: orderData.customer,
-        items: orderData.items,
-        total: orderData.total,
         status: "new" as const,
         createdAt: new Date(),
         payment: paymentData,
@@ -267,7 +260,7 @@ const Cart: React.FC = () => {
         payload: "Erro ao processar pagamento. Tente novamente.",
       });
     } finally {
-      setIsSubmitting(false);
+      dispatch({ type: "SET_SUBMITTING_ORDER", payload: false });
     }
   };
 
@@ -541,7 +534,7 @@ const Cart: React.FC = () => {
                     }`}
                   >
                     <CreditCard className="h-5 w-5" />
-                    <span>Cartão de Crédito</span>
+                    <span>Cartão de Crédito/Débito</span>
                   </button>
                 )}
               </div>
@@ -610,23 +603,35 @@ const Cart: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPayment(true)}
-                  disabled={isSubmitting}
+                  disabled={state.isSubmittingOrder}
                   className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                 >
                   <CreditCard className="h-5 w-5" />
                   <span>
-                    {isSubmitting ? "Processando..." : "Pagar com Cartão"}
+                    {state.isSubmittingOrder ? "Processando..." : "Pagar com Cartão"}
+                  </span>
+                </button>
+              ) : payment.method === "pix" ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPayment(true)}
+                  disabled={state.isSubmittingOrder}
+                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                >
+                  <QrCode className="h-5 w-5" />
+                  <span>
+                    {state.isSubmittingOrder ? "Processando..." : "Pagar com PIX"}
                   </span>
                 </button>
               ) : (
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={state.isSubmittingOrder}
                   className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                 >
                   {getPaymentIcon(payment.method)}
                   <span>
-                    {isSubmitting
+                    {state.isSubmittingOrder
                       ? "Enviando Pedido..."
                       : `Confirmar Pedido - ${getPaymentMethodLabel(
                           payment.method
@@ -641,6 +646,7 @@ const Cart: React.FC = () => {
         {showPayment && (
           <PaymentModal
             amount={total}
+            paymentMethod={payment.method as 'pix' | 'cartao'}
             onSuccess={handlePaymentSuccess}
             onClose={() => setShowPayment(false)}
           />
@@ -740,10 +746,10 @@ const Cart: React.FC = () => {
 
         <button
           onClick={() => setShowCheckout(true)}
-          disabled={isSubmitting}
+          disabled={state.isSubmittingOrder}
           className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors"
         >
-          {isSubmitting ? "Processando..." : "Finalizar Pedido"}
+          {state.isSubmittingOrder ? "Processando..." : "Finalizar Pedido"}
         </button>
       </div>
     </div>
