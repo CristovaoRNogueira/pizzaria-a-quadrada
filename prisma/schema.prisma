@@ -15,12 +15,12 @@ model Pizza {
   name        String
   description String
   image       String
-  category    String   // 'quadrada' | 'redonda' | 'doce' | 'bebida'
+  category    String // 'quadrada' | 'redonda' | 'doce' | 'bebida'
   ingredients String[] // Array de ingredientes
-  priceSmall  Float?   // Preço tamanho pequeno
-  priceMedium Float    // Preço tamanho médio
-  priceLarge  Float    // Preço tamanho grande
-  priceFamily Float    // Preço tamanho família
+  priceSmall  Float? // Preço tamanho pequeno
+  priceMedium Float // Preço tamanho médio
+  priceLarge  Float // Preço tamanho grande
+  priceFamily Float // Preço tamanho família
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -32,13 +32,13 @@ model Pizza {
 }
 
 model Customer {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
-  phone        String
+  phone        String   @unique
   address      String?
   neighborhood String?
   reference    String?
-  deliveryType String  // 'delivery' | 'pickup'
+  deliveryType String // 'delivery' | 'pickup'
   latitude     Float?
   longitude    Float?
   createdAt    DateTime @default(now())
@@ -60,11 +60,11 @@ model Order {
   updatedAt  DateTime    @updatedAt
 
   // Informações de pagamento
-  paymentMethod     String  // 'dinheiro' | 'pix' | 'cartao'
-  paymentNeedsChange Boolean @default(false)
+  paymentMethod       String // 'dinheiro' | 'pix' | 'cartao'
+  paymentNeedsChange  Boolean @default(false)
   paymentChangeAmount Float?
-  paymentPixCode     String?
-  paymentStripeId    String?
+  paymentPixCode      String?
+  paymentStripeId     String?
 
   // Relacionamentos
   customer   Customer    @relation(fields: [customerId], references: [id])
@@ -74,14 +74,14 @@ model Order {
 }
 
 model OrderItem {
-  id            String @id @default(cuid())
-  orderId       String
-  pizzaId       String
-  quantity      Int
-  selectedSize  String // 'small' | 'medium' | 'large' | 'family'
+  id              String   @id @default(cuid())
+  orderId         String
+  pizzaId         String
+  quantity        Int
+  selectedSize    String // 'small' | 'medium' | 'large' | 'family'
   selectedFlavors String[] // Array de IDs dos sabores selecionados
-  unitPrice     Float
-  totalPrice    Float
+  unitPrice       Float
+  totalPrice      Float
 
   // Relacionamentos
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -94,7 +94,7 @@ model BusinessSettings {
   id            String  @id @default("default")
   isOpen        Boolean @default(true)
   closedMessage String  @default("Estamos fechados no momento. Nosso horário de funcionamento é das 18:00 às 23:00.")
-  
+
   // Configurações de pagamento
   pixKey               String  @default("77999742491")
   pixName              String  @default("Pizzaria a Quadrada")
@@ -114,12 +114,12 @@ model BusinessSettings {
 }
 
 model BusinessHours {
-  id               String @id @default(cuid())
-  businessSettingsId String @default("default")
-  day              String // 'Domingo', 'Segunda-feira', etc.
-  isOpen           Boolean @default(true)
-  openTime         String @default("18:00")
-  closeTime        String @default("23:00")
+  id                 String  @id @default(cuid())
+  businessSettingsId String  @default("default")
+  day                String // 'Domingo', 'Segunda-feira', etc.
+  isOpen             Boolean @default(true)
+  openTime           String  @default("18:00")
+  closeTime          String  @default("23:00")
 
   // Relacionamentos
   businessSettings BusinessSettings @relation(fields: [businessSettingsId], references: [id], onDelete: Cascade)
@@ -131,7 +131,7 @@ model BusinessHours {
 model Admin {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String   // Hash da senha
+  password  String // Hash da senha
   name      String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
