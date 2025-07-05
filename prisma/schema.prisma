@@ -1,0 +1,150 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pizza {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  image       String
+  category    String   // 'quadrada' | 'redonda' | 'doce' | 'bebida'
+  ingredients String[] // Array de ingredientes
+  priceSmall  Float?   // Preço tamanho pequeno
+  priceMedium Float    // Preço tamanho médio
+  priceLarge  Float    // Preço tamanho grande
+  priceFamily Float    // Preço tamanho família
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  orderItems OrderItem[]
+
+  @@map("pizzas")
+}
+
+model Customer {
+  id           String  @id @default(cuid())
+  name         String
+  phone        String
+  address      String?
+  neighborhood String?
+  reference    String?
+  deliveryType String  // 'delivery' | 'pickup'
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  customerId String
+  total      Float
+  status     OrderStatus @default(NEW)
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Informações de pagamento
+  paymentMethod     String  // 'dinheiro' | 'pix' | 'cartao'
+  paymentNeedsChange Boolean @default(false)
+  paymentChangeAmount Float?
+  paymentPixCode     String?
+  paymentStripeId    String?
+
+  // Relacionamentos
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String @id @default(cuid())
+  orderId       String
+  pizzaId       String
+  quantity      Int
+  selectedSize  String // 'small' | 'medium' | 'large' | 'family'
+  selectedFlavors String[] // Array de IDs dos sabores selecionados
+  unitPrice     Float
+  totalPrice    Float
+
+  // Relacionamentos
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  pizza Pizza @relation(fields: [pizzaId], references: [id])
+
+  @@map("order_items")
+}
+
+model BusinessSettings {
+  id            String  @id @default("default")
+  isOpen        Boolean @default(true)
+  closedMessage String  @default("Estamos fechados no momento. Nosso horário de funcionamento é das 18:00 às 23:00.")
+  
+  // Configurações de pagamento
+  pixKey               String  @default("77999742491")
+  pixName              String  @default("Pizzaria a Quadrada")
+  stripePublishableKey String  @default("")
+  stripeSecretKey      String  @default("")
+  acceptCash           Boolean @default(true)
+  acceptPix            Boolean @default(true)
+  acceptCard           Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  businessHours BusinessHours[]
+
+  @@map("business_settings")
+}
+
+model BusinessHours {
+  id               String @id @default(cuid())
+  businessSettingsId String @default("default")
+  day              String // 'Domingo', 'Segunda-feira', etc.
+  isOpen           Boolean @default(true)
+  openTime         String @default("18:00")
+  closeTime        String @default("23:00")
+
+  // Relacionamentos
+  businessSettings BusinessSettings @relation(fields: [businessSettingsId], references: [id], onDelete: Cascade)
+
+  @@unique([businessSettingsId, day])
+  @@map("business_hours")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hash da senha
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+enum OrderStatus {
+  NEW
+  ACCEPTED
+  PRODUCTION
+  DELIVERY
+  COMPLETED
+  CANCELLED
+}

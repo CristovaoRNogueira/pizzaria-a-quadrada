@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: pizzaria_postgres
+    environment:
+      POSTGRES_USER: pizzaria
+      POSTGRES_PASSWORD: pizzaria123
+      POSTGRES_DB: pizzaria_quadrada
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pizzaria_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: pizzaria_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pizzaria_network
+
+volumes:
+  postgres_data:
+
+networks:
+  pizzaria_network:
+    driver: bridge
