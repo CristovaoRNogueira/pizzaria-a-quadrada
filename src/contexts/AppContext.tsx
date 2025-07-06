@@ -486,11 +486,27 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         lastAddedPizza: null,
       };
 
-    case "LOAD_BUSINESS_SETTINGS":
-      return {
-        ...state,
-        businessSettings: action.payload,
-      };
+   case "LOAD_BUSINESS_SETTINGS":
+  return {
+    ...state,
+    businessSettings: {
+      ...defaultBusinessSettings,
+      ...action.payload,
+      payment: {
+        ...defaultBusinessSettings.payment,
+        ...action.payload.payment,
+      },
+      establishment: {
+        ...defaultEstablishmentInfo,
+        ...action.payload.establishment,
+      },
+      promotionBanner: {
+        ...defaultPromotionBanner,
+        ...action.payload.promotionBanner,
+      },
+    },
+  };
+
 
     case "UPDATE_BUSINESS_SETTINGS":
       const updatedSettings = {
