@@ -177,7 +177,31 @@ const initialState: AppState = {
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
-  switch (action.type) {
+  switch (action.type) 
+  {
+
+//mexi aqui
+ case "LOAD_BUSINESS_SETTINGS":
+      return {
+        ...state,
+        businessSettings: {
+          ...defaultBusinessSettings,
+          ...action.payload,
+          payment: {
+            ...defaultPaymentSettings,
+            ...(action.payload.payment || {}),
+          },
+          establishment: {
+            ...defaultEstablishmentInfo,
+            ...(action.payload.establishment || {}),
+          },
+          promotionBanner: {
+            ...defaultPromotionBanner,
+            ...(action.payload.promotionBanner || {}),
+          },
+        },
+      };
+
     case "SET_LOADING":
       return { ...state, isLoading: action.payload };
 
@@ -486,6 +510,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         lastAddedPizza: null,
       };
 
+
    case "LOAD_BUSINESS_SETTINGS":
   return {
     ...state,
@@ -506,6 +531,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       },
     },
   };
+
 
 
     case "UPDATE_BUSINESS_SETTINGS":
