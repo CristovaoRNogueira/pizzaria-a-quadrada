@@ -31,7 +31,22 @@ app.use((req, res, next) => {
 });
 
 // Middleware de autenticação
-const authenticateToken = (req: any, res: any, next: any) => {
+import { Request, Response, NextFunction } from "express";
+
+interface JwtPayload {
+  id: string | number;
+  email: string;
+}
+
+interface AuthenticatedRequest extends Request {
+  user?: JwtPayload;
+}
+
+const authenticateToken = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
@@ -39,11 +54,15 @@ const authenticateToken = (req: any, res: any, next: any) => {
     return res.sendStatus(401);
   }
 
-  jwt.verify(token, process.env.JWT_SECRET!, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET!,
+    (err: Error | null, decoded: object | undefined) => {
+      if (err) return res.sendStatus(403);
+      req.user = decoded as JwtPayload;
+      next();
+    }
+  );
 };
 
 // Rotas de autenticação
@@ -386,15 +405,26 @@ app.post("/api/orders", async (req, res) => {
 
     // Preparar itens do pedido
     console.log("📦 Preparando itens do pedido...");
-    const orderItemsData = items.map((item: any) => {
+    interface OrderItemInput {
+      id: string;
+      name: string;
+      description?: string;
+      image?: string;
+      category?: string;
+      ingredients?: string[];
+      quantity: number;
+      selectedSize: string;
+      selectedFlavors?: { id: string; name?: string }[];
+      price: number;
+    }
+
+    const orderItemsData = (items as OrderItemInput[]).map((item) => {
       console.log("Processando item:", item.name);
       return {
         pizzaId: item.id,
         quantity: item.quantity,
         selectedSize: item.selectedSize,
-        selectedFlavors: item.selectedFlavors?.map((f: any) => f.id) || [
-          item.id,
-        ],
+        selectedFlavors: item.selectedFlavors?.map((f) => f.id) || [item.id],
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
       };
