@@ -17,7 +17,7 @@ const Header: React.FC = () => {
           >
             <div>
               <h1 className="text-2xl font-bold text-yellow-400">PIZZARIA</h1>
-              <h2 className="text-2xl font-bold text-white">QUADRADA</h2>
+              <h2 className="text-2xl font-bold text-white">aQUADRADA</h2>
               <p className="text-red-100 text-sm">A qualidade é nossa diferença</p>
             </div>
           </div>

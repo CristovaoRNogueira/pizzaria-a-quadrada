@@ -26,7 +26,8 @@ services:
     restart: unless-stopped
 
   wppconnect:
-    image: wppconnect/server:latest
+    build:
+      context: ./wppconnect-server
     container_name: pizzaria_wppconnect
     environment:
       - PORT=21465
