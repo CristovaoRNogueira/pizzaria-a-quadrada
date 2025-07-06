@@ -25,21 +25,11 @@ const AdminDashboard: React.FC = () => {
     today.getMonth(),
     today.getDate()
   );
-  const startOfWeek = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() - today.getDay()
-  );
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
   // Pedidos de hoje
   const todayOrders = state.orders.filter(
     (order) => new Date(order.createdAt) >= startOfDay
-  );
-
-  // Pedidos da semana
-  const weekOrders = state.orders.filter(
-    (order) => new Date(order.createdAt) >= startOfWeek
   );
 
   // Pedidos do mês
@@ -49,9 +39,6 @@ const AdminDashboard: React.FC = () => {
 
   // Receita de hoje
   const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
-
-  // Receita da semana
-  const weekRevenue = weekOrders.reduce((sum, order) => sum + order.total, 0);
 
   // Receita do mês
   const monthRevenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
@@ -153,14 +140,6 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header
-      
-      <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-xl p-6 text-white">
-        <h2 className="text-3xl font-bold mb-2">Dashboard Administrativo</h2>
-        <p className="text-red-100">Visão geral do desempenho da pizzaria</p>
-      </div>
-      */}
-
       {/* Cards de Estatísticas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -414,32 +393,32 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Resumo Semanal */}
+      {/* Resumo Mensal */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Calendar className="h-6 w-6 text-green-600" />
-          <h3 className="text-xl font-bold text-gray-800">Resumo Semanal</h3>
+          <h3 className="text-xl font-bold text-gray-800">Resumo Mensal</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <p className="text-3xl font-bold text-green-600">
-              {weekOrders.length}
+              {monthOrders.length}
             </p>
-            <p className="text-sm text-gray-600">Pedidos esta semana</p>
+            <p className="text-sm text-gray-600">Pedidos este mês</p>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <p className="text-3xl font-bold text-green-600">
-              {formatCurrency(weekRevenue)}
+              {formatCurrency(monthRevenue)}
             </p>
-            <p className="text-sm text-gray-600">Receita esta semana</p>
+            <p className="text-sm text-gray-600">Receita este mês</p>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <p className="text-3xl font-bold text-green-600">
               {formatCurrency(
-                weekOrders.length > 0 ? weekRevenue / weekOrders.length : 0
+                monthOrders.length > 0 ? monthRevenue / monthOrders.length : 0
               )}
             </p>
-            <p className="text-sm text-gray-600">Ticket médio semanal</p>
+            <p className="text-sm text-gray-600">Ticket médio mensal</p>
           </div>
         </div>
       </div>

@@ -15,6 +15,8 @@ import {
   BusinessHours,
   PaymentSettings,
   EstablishmentInfo,
+  PromotionBanner,
+  Additional,
 } from "../types";
 import { pizzas as initialPizzas } from "../data/pizzas";
 import { whatsappService } from "../services/whatsapp";
@@ -23,9 +25,10 @@ import { apiService } from "../services/api";
 interface AppState {
   cart: CartItem[];
   orders: Order[];
-  currentView: "menu" | "cart" | "admin" | "tracking";
+  currentView: "menu" | "cart" | "admin" | "tracking" | "customer";
   notifications: string[];
   pizzas: Pizza[];
+  additionals: Additional[];
   showBeverageSuggestions: boolean;
   lastAddedPizza: Pizza | null;
   businessSettings: BusinessSettings;
@@ -42,7 +45,7 @@ type AppAction =
       payload: { id: string; quantity: number; size: string };
     }
   | { type: "CLEAR_CART" }
-  | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" | "tracking" }
+  | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" | "tracking" | "customer" }
   | { type: "CREATE_ORDER"; payload: Order }
   | {
       type: "UPDATE_ORDER_STATUS";
@@ -53,13 +56,18 @@ type AppAction =
   | { type: "ADD_PIZZA"; payload: Pizza }
   | { type: "UPDATE_PIZZA"; payload: Pizza }
   | { type: "DELETE_PIZZA"; payload: string }
+  | { type: "ADD_ADDITIONAL"; payload: Additional }
+  | { type: "UPDATE_ADDITIONAL"; payload: Additional }
+  | { type: "DELETE_ADDITIONAL"; payload: string }
   | { type: "SHOW_BEVERAGE_SUGGESTIONS"; payload: Pizza }
   | { type: "HIDE_BEVERAGE_SUGGESTIONS" }
   | { type: "UPDATE_BUSINESS_SETTINGS"; payload: Partial<BusinessSettings> }
   | { type: "UPDATE_PAYMENT_SETTINGS"; payload: PaymentSettings }
   | { type: "UPDATE_ESTABLISHMENT_SETTINGS"; payload: EstablishmentInfo }
+  | { type: "UPDATE_PROMOTION_BANNER"; payload: PromotionBanner }
   | { type: "LOAD_BUSINESS_SETTINGS"; payload: BusinessSettings }
   | { type: "SET_PIZZAS"; payload: Pizza[] }
+  | { type: "SET_ADDITIONALS"; payload: Additional[] }
   | { type: "SET_ORDERS"; payload: Order[] }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_SUBMITTING_ORDER"; payload: boolean }
@@ -95,6 +103,13 @@ const defaultEstablishmentInfo: EstablishmentInfo = {
   email: "contato@pizzariaquadrada.com",
 };
 
+const defaultPromotionBanner: PromotionBanner = {
+  active: false,
+  title: "",
+  message: "",
+  color: "#dc2626",
+};
+
 const defaultBusinessSettings: BusinessSettings = {
   businessHours: defaultBusinessHours,
   isOpen: true,
@@ -102,6 +117,7 @@ const defaultBusinessSettings: BusinessSettings = {
     "Estamos fechados no momento. Nosso horário de funcionamento é das 18:00 às 23:00.",
   payment: defaultPaymentSettings,
   establishment: defaultEstablishmentInfo,
+  promotionBanner: defaultPromotionBanner,
 };
 
 // Função para carregar configurações do localStorage (fallback)
@@ -120,6 +136,10 @@ const loadBusinessSettings = (): BusinessSettings => {
         establishment: {
           ...defaultEstablishmentInfo,
           ...parsed.establishment,
+        },
+        promotionBanner: {
+          ...defaultPromotionBanner,
+          ...parsed.promotionBanner,
         },
       };
     }
@@ -147,6 +167,7 @@ const initialState: AppState = {
   currentView: "menu",
   notifications: [],
   pizzas: initialPizzas,
+  additionals: [],
   showBeverageSuggestions: false,
   lastAddedPizza: null,
   businessSettings: loadBusinessSettings(),
@@ -165,6 +186,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
     case "SET_PIZZAS":
       return { ...state, pizzas: action.payload };
+
+    case "SET_ADDITIONALS":
+      return { ...state, additionals: action.payload };
 
     case "SET_ORDERS":
       return { ...state, orders: action.payload };
@@ -260,6 +284,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           selectedFlavors: item.selectedFlavors || [
             { id: item.id, name: item.name },
           ],
+          selectedAdditionals: item.selectedAdditionals || [],
           price: item.price,
         })),
         total: action.payload.total,
@@ -427,6 +452,26 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         pizzas: state.pizzas.filter((pizza) => pizza.id !== action.payload),
       };
 
+    case "ADD_ADDITIONAL":
+      return {
+        ...state,
+        additionals: [...state.additionals, action.payload],
+      };
+
+    case "UPDATE_ADDITIONAL":
+      return {
+        ...state,
+        additionals: state.additionals.map((additional) =>
+          additional.id === action.payload.id ? action.payload : additional
+        ),
+      };
+
+    case "DELETE_ADDITIONAL":
+      return {
+        ...state,
+        additionals: state.additionals.filter((additional) => additional.id !== action.payload),
+      };
+
     case "SHOW_BEVERAGE_SUGGESTIONS":
       return {
         ...state,
@@ -497,6 +542,24 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         businessSettings: updatedEstablishmentSettings,
+      };
+
+    case "UPDATE_PROMOTION_BANNER":
+      const updatedBannerSettings = {
+        ...state.businessSettings,
+        promotionBanner: action.payload,
+      };
+      saveBusinessSettings(updatedBannerSettings);
+
+      apiService
+        .updateBusinessSettings(updatedBannerSettings)
+        .catch((error) => {
+          console.error("Erro ao salvar configurações no backend:", error);
+        });
+
+      return {
+        ...state,
+        businessSettings: updatedBannerSettings,
       };
 
     default:
