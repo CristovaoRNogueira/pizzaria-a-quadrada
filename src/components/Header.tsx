@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, User } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
 const Header: React.FC = () => {
@@ -23,6 +23,14 @@ const Header: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'customer' })}
+              className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+            >
+              <User className="h-5 w-5" />
+              <span className="hidden sm:inline">Minha Conta</span>
+            </button>
+            
             <button
               onClick={() => dispatch({ type: 'SET_VIEW', payload: 'cart' })}
               className="relative bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"

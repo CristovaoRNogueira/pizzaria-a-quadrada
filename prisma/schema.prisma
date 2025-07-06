@@ -31,16 +31,32 @@ model Pizza {
   @@map("pizzas")
 }
 
+model Additional {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  category    String // 'ingredient' | 'extra' | 'drink'
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("additionals")
+}
+
 model Customer {
   id           String   @id @default(cuid())
   name         String
   phone        String   @unique
+  email        String?
+  password     String?  // Hash da senha para área do cliente
   address      String?
   neighborhood String?
   reference    String?
   deliveryType String // 'delivery' | 'pickup'
   latitude     Float?
   longitude    Float?
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -80,6 +96,7 @@ model OrderItem {
   quantity        Int
   selectedSize    String // 'small' | 'medium' | 'large' | 'family'
   selectedFlavors String[] // Array de IDs dos sabores selecionados
+  additionals     String[] // Array de IDs dos adicionais
   unitPrice       Float
   totalPrice      Float
 
@@ -103,6 +120,19 @@ model BusinessSettings {
   acceptCash           Boolean @default(true)
   acceptPix            Boolean @default(true)
   acceptCard           Boolean @default(false)
+
+  // Informações do estabelecimento
+  establishmentName      String @default("Pizzaria a Quadrada")
+  establishmentPhone     String @default("+55 77 99974-2491")
+  establishmentInstagram String @default("@pizzariaquadrada")
+  establishmentAddress   String @default("Rua das Pizzas, 123 - Centro, Vitória da Conquista - BA")
+  establishmentEmail     String @default("contato@pizzariaquadrada.com")
+
+  // Banner de promoção
+  promotionBannerActive  Boolean @default(false)
+  promotionBannerTitle   String  @default("")
+  promotionBannerMessage String  @default("")
+  promotionBannerColor   String  @default("#dc2626")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -133,6 +163,8 @@ model Admin {
   email     String   @unique
   password  String // Hash da senha
   name      String
+  role      String   @default("admin") // 'admin' | 'operator' | 'delivery'
+  permissions Json   @default("{}")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

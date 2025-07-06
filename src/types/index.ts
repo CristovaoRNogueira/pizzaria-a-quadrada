@@ -14,6 +14,15 @@ export interface Pizza {
   };
 }
 
+export interface Additional {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  category: 'ingredient' | 'extra' | 'drink';
+  isActive: boolean;
+}
+
 export interface PizzaSize {
   name: string;
   slices: number;
@@ -25,20 +34,25 @@ export interface CartItem extends Pizza {
   quantity: number;
   selectedSize: 'small' | 'medium' | 'large' | 'family';
   selectedFlavors: Pizza[];
+  selectedAdditionals?: Additional[];
 }
 
 export interface Customer {
+  id?: string;
   name: string;
   phone: string;
+  email?: string;
+  password?: string;
   address: string;
   neighborhood: string;
   reference?: string;
-  notes?: string; // Campo de observações
+  notes?: string;
   location?: {
     lat: number;
     lng: number;
   };
   deliveryType: 'delivery' | 'pickup';
+  isActive?: boolean;
 }
 
 export interface PaymentInfo {
@@ -47,10 +61,10 @@ export interface PaymentInfo {
   changeAmount?: number;
   pixCode?: string;
   pixPaid?: boolean;
-  pixCopied?: boolean; // Para controlar se o código foi copiado
+  pixCopied?: boolean;
   cardType?: 'credito' | 'debito';
   stripePaymentIntentId?: string;
-  confirmed?: boolean; // Para marcar pagamento como confirmado
+  confirmed?: boolean;
 }
 
 export interface Order {
@@ -91,12 +105,20 @@ export interface EstablishmentInfo {
   email: string;
 }
 
+export interface PromotionBanner {
+  active: boolean;
+  title: string;
+  message: string;
+  color: string;
+}
+
 export interface BusinessSettings {
   businessHours: BusinessHours[];
   isOpen: boolean;
   closedMessage: string;
   payment: PaymentSettings;
   establishment: EstablishmentInfo;
+  promotionBanner: PromotionBanner;
 }
 
 export interface User {
