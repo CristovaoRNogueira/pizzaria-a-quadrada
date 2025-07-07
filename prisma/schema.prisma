@@ -80,6 +80,8 @@ model OrderItem {
   quantity        Int
   selectedSize    String // 'small' | 'medium' | 'large' | 'family'
   selectedFlavors String[] // Array de IDs dos sabores selecionados
+  selectedAdditionals String[] // Array de IDs dos adicionais selecionados
+  notes           String?  // Observações do cliente
   unitPrice       Float
   totalPrice      Float
 
@@ -88,6 +90,19 @@ model OrderItem {
   pizza Pizza @relation(fields: [pizzaId], references: [id])
 
   @@map("order_items")
+}
+
+model Additional {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  category    String   // 'queijo' | 'carne' | 'vegetal' | 'outros'
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("additionals")
 }
 
 model BusinessSettings {

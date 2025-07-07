@@ -524,6 +524,10 @@ app.get("/api/business-settings", async (req, res) => {
           day: hour.day,
           isOpen: hour.isOpen,
           openTime: hour.openTime,
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
           closeTime: hour.closeTime,
         })),
         payment: {

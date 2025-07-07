@@ -29,6 +29,7 @@ import { apiService } from "../services/api";
 import WhatsAppStatus from "./WhatsAppStatus";
 import BusinessHoursManager from "./BusinessHoursManager";
 import PaymentSettings from "./PaymentSettings";
+import AdditionalsManager from "./AdditionalsManager";
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -37,7 +38,7 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "orders" | "menu" | "whatsapp" | "settings"
+    "dashboard" | "orders" | "menu" | "additionals" | "whatsapp" | "settings"
   >("dashboard");
   const [activeOrderTab, setActiveOrderTab] = useState<
     "new" | "accepted" | "production" | "delivery" | "completed" | "all"
@@ -880,6 +881,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               Cardápio
             </button>
             <button
+              onClick={() => setActiveTab("additionals")}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === "additionals"
+                  ? "bg-red-600 text-white shadow-md"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Adicionais
+            </button>
+            <button
               onClick={() => setActiveTab("whatsapp")}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 activeTab === "whatsapp"
@@ -914,6 +925,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
         {activeTab === "dashboard" ? (
           renderDashboard()
+        ) : activeTab === "additionals" ? (
+          <AdditionalsManager />
         ) : activeTab === "settings" ? (
           <div>
             {/* Settings Sub-tabs */}
