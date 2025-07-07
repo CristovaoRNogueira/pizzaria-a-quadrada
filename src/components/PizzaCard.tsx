@@ -767,36 +767,31 @@ const Cart: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                <button
-                  onClick={() =>
-                    handleQuantityChange(
-                      index,
-                      item.quantity - 1
-                    )
-                  }
-                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="font-medium px-2">{item.quantity}</span>
-                <button
-                  onClick={() =>
-                    handleQuantityChange(
-                      item.quantity + 1
-                    )
-                  }
-                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                  <button
+                    onClick={() =>
+                      handleQuantityChange(
+                        index,
+                        item.quantity - 1
+                      )
+                    }
+                    className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="font-medium px-2">{item.quantity}</span>
+                  <button
+                    onClick={() =>
+                      handleQuantityChange(
+                        index,
+                        item.quantity + 1
+                      )
+                    }
+                    className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-
-              <button
-                onClick={() => handleRemoveItem(item.id, item.selectedSize)}
-                className="text-red-600 hover:text-red-700 p-2 transition-colors"
-              >
-                <Trash2 className="h-5 w-5" />
-              </button>
             </div>
           </div>
         ))}
@@ -818,6 +813,17 @@ const Cart: React.FC = () => {
           {isSubmitting ? "Processando..." : "Finalizar Pedido"}
         </button>
       </div>
+
+      {showAdditionals && editingItemIndex !== null && (
+        <AdditionalsModal
+          item={state.cart[editingItemIndex]}
+          onClose={() => {
+            setShowAdditionals(false);
+            setEditingItemIndex(null);
+          }}
+          onSave={handleUpdateItem}
+        />
+      )}
     </div>
   );
 };
