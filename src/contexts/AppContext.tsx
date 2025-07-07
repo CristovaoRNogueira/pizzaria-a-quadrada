@@ -84,7 +84,8 @@ type AppAction =
   | { type: "ADD_USER"; payload: User }
   | { type: "UPDATE_USER"; payload: User }
   | { type: "DELETE_USER"; payload: string }
-  | { type: "SET_CURRENT_USER"; payload: User | null };
+  | { type: "SET_CURRENT_USER"; payload: User | null }
+  | { type: "REMOVE_ORDER"; payload: string };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -316,6 +317,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           ],
           selectedAdditionals: item.selectedAdditionals || [],
           notes: item.notes || "",
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
           price: item.price,
         })),
         total: orderWithId.total,
@@ -339,8 +342,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
               .getOrders()
               .then((orders) => {
                 console.log("Pedidos recarregados:", orders);
-                // Aqui você pode disparar outro action para atualizar os pedidos
-                // Mas como estamos dentro do reducer, vamos fazer isso no useEffect
               })
               .catch((error) => {
                 console.error("Erro ao recarregar pedidos:", error);
@@ -375,16 +376,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         showOrderTracking: true,
       };
 
+    case "REMOVE_ORDER":
+      return {
+        ...state,
+        orders: state.orders.filter(order => order.id !== action.payload),
+      };
     case "UPDATE_ORDER_STATUS":
-      // Enviar atualização para o backend
-      apiService
-        .updateOrderStatus(action.payload.id, action.payload.status)
-        .then(() => {
-          console.log("Status do pedido atualizado no backend");
-        })
-        .catch((error) => {
-          console.error("Erro ao atualizar status no backend:", error);
-        });
 
       const updatedOrders = state.orders.map((order) =>
         order.id === action.payload.id

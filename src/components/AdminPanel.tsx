@@ -74,22 +74,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   };
 
   const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    dispatch({
-      type: 'UPDATE_ORDER_STATUS',
-      payload: { id: orderId, status: newStatus }
-    });
-    dispatch({
-      type: 'ADD_NOTIFICATION',
-      payload: `Status do pedido atualizado para ${getStatusLabel(newStatus)}`
+    // Enviar para o backend
+    fetch(`/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+      },
+      body: JSON.stringify({ status: newStatus.toUpperCase() })
+    })
+    .then(response => response.json())
+    .then(updatedOrder => {
+      console.log('Status atualizado no backend:', updatedOrder);
+      // Atualizar no estado local
+      dispatch({
+        type: 'UPDATE_ORDER_STATUS',
+        payload: { id: orderId, status: newStatus }
+      });
+      dispatch({
+        type: 'ADD_NOTIFICATION',
+        payload: `Status do pedido atualizado para ${getStatusLabel(newStatus)}`
+      });
+    })
+    .catch(error => {
+      console.error('Erro ao atualizar status:', error);
+      dispatch({
+        type: 'ADD_NOTIFICATION',
+        payload: 'Erro ao atualizar status do pedido'
+      });
     });
   };
 
   const handleDeleteOrder = (orderId: string) => {
     if (confirm('Tem certeza que deseja excluir este pedido?')) {
-      // Add delete order action to context
-      dispatch({
-        type: 'ADD_NOTIFICATION',
-        payload: 'Pedido excluído com sucesso!'
+      fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        }
+      })
+      .then(() => {
+        dispatch({
+          type: 'REMOVE_ORDER',
+          payload: orderId
+        });
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          payload: 'Pedido excluído com sucesso!'
+        });
+      })
+      .catch(error => {
+        console.error('Erro ao excluir pedido:', error);
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          payload: 'Erro ao excluir pedido'
+        });
       });
     }
   };
@@ -342,6 +381,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                 >
                   <Check className="h-3 w-3" />
                 </button>
+                
+                {/* Dropdown para mudança de status */}
+                <select
+                  value={order.status}
+                  onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                  className="text-xs p-1 border rounded"
+                  title="Alterar Status"
+                >
+                  <option value="new">Novo</option>
+                  <option value="accepted">Aceito</option>
+                  <option value="production">Produção</option>
+                  <option value="delivery">Entrega</option>
+                  <option value="completed">Concluído</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
                 <button
                   onClick={() => handleWhatsAppContact(order)}
                   className="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
