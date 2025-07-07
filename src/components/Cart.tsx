@@ -664,103 +664,105 @@ const Cart: React.FC = () => {
           <span>Continuar Pedindo</span>
         </button>
       </div>
-
-      <div className="space-y-4">
-        {state.cart.map((item) => (
-          <div
-            key={`${item.id}-${item.selectedSize}`}
-            className="bg-white rounded-xl shadow-md p-4"
+    <>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Seu Carrinho</h2>
+          <button
+            onClick={handleContinueShopping}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
           >
-            <div className="flex items-center space-x-4">
-              <img
-                src={item.image}
-                alt={item.name}
-                className="w-16 h-16 object-cover rounded-lg"
-              />
-
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                <p className="text-sm text-gray-600">
-                  Tamanho: {getSizeLabel(item.selectedSize)}
-                </p>
-                {item.selectedFlavors && item.selectedFlavors.length > 1 && (
-                  <p className="text-sm text-gray-600">
-                    Sabores:{" "}
-                    {item.selectedFlavors.map((f) => f.name).join(", ")}
-                  </p>
-                )}
-                {item.selectedAdditionals && item.selectedAdditionals.length > 0 && (
-                  <p className="text-sm text-gray-600">
-                    Adicionais:{" "}
-                    {item.selectedAdditionals.map((add) => add.name).join(", ")}
-                  </p>
-                )}
-                {item.notes && (
-                  <p className="text-sm text-gray-600 italic">
-                    Obs: {item.notes}
-                  </p>
-                )}
-                <p className="text-lg font-bold text-red-600">
-                  R$ {item.price.toFixed(2)}
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() =>
-                    handleQuantityChange(
-                      item.id,
-                      item.selectedSize,
-                      item.quantity - 1
-                    )
-                  }
-                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="font-medium px-2">{item.quantity}</span>
-                <button
-                  onClick={() =>
-                    handleQuantityChange(
-                      item.id,
-                      item.selectedSize,
-                      item.quantity + 1
-                    )
-                  }
-                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-
-              <button
-                onClick={() => handleRemoveItem(item.id, item.selectedSize)}
-                className="text-red-600 hover:text-red-700 p-2 transition-colors"
-              >
-                <Trash2 className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-xl font-semibold">Total:</span>
-          <span className="text-3xl font-bold text-red-600">
-            R$ {total.toFixed(2)}
-          </span>
+            <ShoppingBag className="h-4 w-4" />
+            <span>Continuar Pedindo</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => setShowCheckout(true)}
-          disabled={isSubmitting}
-          className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-        >
-          {isSubmitting ? "Processando..." : "Finalizar Pedido"}
-        </button>
+        <div className="space-y-4">
+          {state.cart.map((item) => (
+            <div
+              key={`${item.id}-${item.selectedSize}`}
+              className="bg-white rounded-xl shadow-md p-4"
+            >
+              <div className="flex items-center space-x-4">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-16 h-16 object-cover rounded-lg"
+                />
+
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    Tamanho: {getSizeLabel(item.selectedSize)}
+                  </p>
+                  {item.selectedFlavors && item.selectedFlavors.length > 1 && (
+                    <p className="text-sm text-gray-600">
+                      Sabores:{" "}
+                      {item.selectedFlavors.map((f) => f.name).join(", ")}
+                    </p>
+                  )}
+                  <p className="text-lg font-bold text-red-600">
+                    R$ {item.price.toFixed(2)}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() =>
+                      handleQuantityChange(
+                        item.id,
+                        item.selectedSize,
+                        item.quantity - 1
+                      )
+                    }
+                    className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="font-medium px-2">{item.quantity}</span>
+                  <button
+                    onClick={() =>
+                      handleQuantityChange(
+                        item.id,
+                        item.selectedSize,
+                        item.quantity + 1
+                      )
+                    }
+                    className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleRemoveItem(item.id, item.selectedSize)}
+                  className="text-red-600 hover:text-red-700 p-2 transition-colors"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-xl font-semibold">Total:</span>
+            <span className="text-3xl font-bold text-red-600">
+              R$ {total.toFixed(2)}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setShowCheckout(true)}
+            disabled={isSubmitting}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+          >
+            {isSubmitting ? "Processando..." : "Finalizar Pedido"}
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
