@@ -17,7 +17,10 @@ import {
   X,
   Phone,
   MapPin,
-  Package
+  Package,
+  ArrowRight,
+  DollarSign,
+  CreditCard
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import PizzaManager from './PizzaManager';
@@ -39,6 +42,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [settingsSubTab, setSettingsSubTab] = useState<'business' | 'hours' | 'payment' | 'users'>('business');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderStatusTab, setOrderStatusTab] = useState<'new' | 'accepted' | 'production' | 'delivery' | 'completed' | 'all'>('all');
+
+  // Estado para controlar pagamentos confirmados
+  const [confirmedPayments, setConfirmedPayments] = useState<Set<string>>(new Set());
 
   const getStatusIcon = (status: OrderStatus) => {
     switch (status) {
@@ -53,12 +60,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
-      case 'new': return 'text-blue-600 bg-blue-50';
-      case 'accepted': return 'text-green-600 bg-green-50';
-      case 'production': return 'text-orange-600 bg-orange-50';
-      case 'delivery': return 'text-purple-600 bg-purple-50';
-      case 'completed': return 'text-gray-600 bg-gray-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'new': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'accepted': return 'text-green-600 bg-green-50 border-green-200';
+      case 'production': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'delivery': return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'completed': return 'text-gray-600 bg-gray-50 border-gray-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
@@ -66,10 +73,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     switch (status) {
       case 'new': return 'Novo';
       case 'accepted': return 'Aceito';
-      case 'production': return 'Preparando';
-      case 'delivery': return 'Entregando';
+      case 'production': return 'Produção';
+      case 'delivery': return 'Entrega';
       case 'completed': return 'Concluído';
       default: return status;
+    }
+  };
+
+  const getNextStatus = (currentStatus: OrderStatus): OrderStatus | null => {
+    switch (currentStatus) {
+      case 'new': return 'accepted';
+      case 'accepted': return 'production';
+      case 'production': return 'delivery';
+      case 'delivery': return 'completed';
+      default: return null;
+    }
+  };
+
+  const getNextStatusLabel = (currentStatus: OrderStatus): string => {
+    const nextStatus = getNextStatus(currentStatus);
+    if (!nextStatus) return '';
+    
+    switch (nextStatus) {
+      case 'accepted': return 'Aceitar Pedido';
+      case 'production': return 'Iniciar Produção';
+      case 'delivery': return 'Enviar para Entrega';
+      case 'completed': return 'Marcar como Concluído';
+      default: return '';
     }
   };
 
@@ -102,6 +132,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         type: 'ADD_NOTIFICATION',
         payload: 'Erro ao atualizar status do pedido'
       });
+    });
+  };
+
+  const handleAdvanceStatus = (orderId: string, currentStatus: OrderStatus) => {
+    const nextStatus = getNextStatus(currentStatus);
+    if (nextStatus) {
+      handleStatusChange(orderId, nextStatus);
+    }
+  };
+
+  const handleConfirmPayment = (orderId: string) => {
+    setConfirmedPayments(prev => new Set(prev).add(orderId));
+    dispatch({
+      type: 'ADD_NOTIFICATION',
+      payload: 'Pagamento confirmado!'
     });
   };
 
@@ -191,6 +236,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     }, 0);
   };
 
+  // Filtrar pedidos por status
+  const getFilteredOrders = () => {
+    if (orderStatusTab === 'all') {
+      return state.orders;
+    }
+    return state.orders.filter(order => order.status === orderStatusTab);
+  };
+
+  // Contar pedidos por status
+  const getOrderCountByStatus = (status: OrderStatus | 'all') => {
+    if (status === 'all') return state.orders.length;
+    return state.orders.filter(order => order.status === status).length;
+  };
+
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -265,7 +324,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
           {state.orders.slice(0, 5).map(order => (
             <div key={order.id} className="flex items-center justify-between py-3 border-b last:border-b-0">
               <div className="flex items-center space-x-4">
-                <div className={`p-2 rounded-full ${getStatusColor(order.status)}`}>
+                <div className={`p-2 rounded-full border ${getStatusColor(order.status)}`}>
                   {getStatusIcon(order.status)}
                 </div>
                 <div>
@@ -293,15 +352,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {state.orders.map(order => (
+      {/* Abas de Status */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="flex overflow-x-auto">
+          {[
+            { key: 'all', label: 'Todos', icon: ShoppingBag },
+            { key: 'new', label: 'Novo', icon: Clock },
+            { key: 'accepted', label: 'Aceito', icon: CheckCircle },
+            { key: 'production', label: 'Produção', icon: ChefHat },
+            { key: 'delivery', label: 'Entrega', icon: Truck },
+            { key: 'completed', label: 'Concluído', icon: Package }
+          ].map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setOrderStatusTab(key as any)}
+              className={`flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                orderStatusTab === key
+                  ? 'border-red-500 text-red-600 bg-red-50'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                orderStatusTab === key
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {getOrderCountByStatus(key as any)}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Lista de Pedidos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {getFilteredOrders().map(order => (
           <div key={order.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
             {/* Header */}
-            <div className={`p-3 ${getStatusColor(order.status)} border-b`}>
+            <div className={`p-3 border-b ${getStatusColor(order.status)}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   {getStatusIcon(order.status)}
                   <span className="text-xs font-medium">#{order.id.slice(-8)}</span>
+                  {confirmedPayments.has(order.id) && (
+                    <div className="flex items-center space-x-1 bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                      <DollarSign className="h-3 w-3" />
+                      <span className="text-xs font-medium">Pago</span>
+                    </div>
+                  )}
                 </div>
                 <span className="text-xs font-medium">{formatTime(order.createdAt)}</span>
               </div>
@@ -340,7 +440,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                 <p className="text-sm font-bold text-red-600">
                   R$ {getOrderTotal(order).toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-gray-600 flex items-center">
+                  <CreditCard className="h-3 w-3 mr-1" />
                   {order.payment.method === 'dinheiro' && 'Dinheiro'}
                   {order.payment.method === 'pix' && 'PIX'}
                   {order.payment.method === 'cartao' && 'Cartão'}
@@ -350,80 +451,81 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
             {/* Actions */}
             <div className="p-2 bg-gray-50 border-t">
-              <div className="grid grid-cols-5 gap-1">
+              <div className="grid grid-cols-2 gap-1 mb-2">
                 <button
                   onClick={() => showOrderDetails(order)}
-                  className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                  className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors text-xs flex items-center justify-center"
                   title="Detalhes"
                 >
-                  <Info className="h-3 w-3" />
+                  <Info className="h-3 w-3 mr-1" />
+                  Detalhes
                 </button>
                 <button
                   onClick={() => handlePrintOrder(order)}
-                  className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                  className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors text-xs flex items-center justify-center"
                   title="Imprimir"
                 >
-                  <Printer className="h-3 w-3" />
+                  <Printer className="h-3 w-3 mr-1" />
+                  Imprimir
                 </button>
-                <button
-                  onClick={() => {
-                    const nextStatus = order.status === 'new' ? 'accepted' : 
-                                     order.status === 'accepted' ? 'production' :
-                                     order.status === 'production' ? 'delivery' :
-                                     order.status === 'delivery' ? 'completed' : order.status;
-                    if (nextStatus !== order.status) {
-                      handleStatusChange(order.id, nextStatus);
-                    }
-                  }}
-                  className="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
-                  title="Avançar Status"
-                  disabled={order.status === 'completed'}
-                >
-                  <Check className="h-3 w-3" />
-                </button>
-                
-                {/* Dropdown para mudança de status */}
-                <select
-                  value={order.status}
-                  onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                  className="text-xs p-1 border rounded"
-                  title="Alterar Status"
-                >
-                  <option value="new">Novo</option>
-                  <option value="accepted">Aceito</option>
-                  <option value="production">Produção</option>
-                  <option value="delivery">Entrega</option>
-                  <option value="completed">Concluído</option>
-                  <option value="cancelled">Cancelado</option>
-                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 mb-2">
                 <button
                   onClick={() => handleWhatsAppContact(order)}
-                  className="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                  className="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors text-xs flex items-center justify-center"
                   title="WhatsApp"
                 >
-                  <MessageCircle className="h-3 w-3" />
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                  WhatsApp
                 </button>
                 <button
                   onClick={() => handleDeleteOrder(order.id)}
-                  className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
+                  className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors text-xs flex items-center justify-center"
                   title="Excluir"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Excluir
                 </button>
               </div>
+
+              {/* Botão de Confirmar Pagamento */}
+              {order.payment.method === 'dinheiro' && !confirmedPayments.has(order.id) && (
+                <button
+                  onClick={() => handleConfirmPayment(order.id)}
+                  className="w-full p-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors text-xs flex items-center justify-center mb-1"
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  Confirmar Pagamento
+                </button>
+              )}
+
+              {/* Botão de Avançar Status */}
+              {getNextStatus(order.status) && (
+                <button
+                  onClick={() => handleAdvanceStatus(order.id, order.status)}
+                  className="w-full p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-xs flex items-center justify-center"
+                >
+                  <ArrowRight className="h-3 w-3 mr-1" />
+                  {getNextStatusLabel(order.status)}
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      {state.orders.length === 0 && (
+      {getFilteredOrders().length === 0 && (
         <div className="text-center py-12">
           <ShoppingBag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             Nenhum pedido encontrado
           </h3>
           <p className="text-gray-500">
-            Os pedidos aparecerão aqui quando forem realizados.
+            {orderStatusTab === 'all' 
+              ? 'Os pedidos aparecerão aqui quando forem realizados.'
+              : `Nenhum pedido com status "${getStatusLabel(orderStatusTab as OrderStatus)}" encontrado.`
+            }
           </p>
         </div>
       )}
@@ -642,10 +744,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
             <div className="p-6 space-y-6">
               {/* Status */}
-              <div className={`p-4 rounded-lg ${getStatusColor(selectedOrder.status)}`}>
+              <div className={`p-4 rounded-lg border ${getStatusColor(selectedOrder.status)}`}>
                 <div className="flex items-center space-x-2">
                   {getStatusIcon(selectedOrder.status)}
                   <span className="font-medium">Status: {getStatusLabel(selectedOrder.status)}</span>
+                  {confirmedPayments.has(selectedOrder.id) && (
+                    <div className="flex items-center space-x-1 bg-green-100 text-green-800 px-2 py-1 rounded-full ml-auto">
+                      <DollarSign className="h-4 w-4" />
+                      <span className="text-sm font-medium">Pagamento Confirmado</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -717,12 +825,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                       {selectedOrder.payment.method === 'cartao' && 'Cartão de Crédito'}
                     </span>
                   </div>
+                  
                   {selectedOrder.payment.method === 'dinheiro' && selectedOrder.payment.needsChange && (
                     <div className="flex justify-between items-center mt-2">
                       <span>Troco para:</span>
                       <span className="font-medium">R$ {selectedOrder.payment.changeAmount?.toFixed(2)}</span>
                     </div>
                   )}
+                  
                   <div className="flex justify-between items-center mt-2 pt-2 border-t">
                     <span className="font-semibold">Total:</span>
                     <span className="font-bold text-lg text-red-600">
