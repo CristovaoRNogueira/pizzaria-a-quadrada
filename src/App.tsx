@@ -5,6 +5,7 @@ import Menu from './components/Menu';
 import Cart from './components/Cart';
 import AdminRoute from './components/AdminRoute';
 import Notifications from './components/Notifications';
+import OrderTracking from './components/OrderTracking';
 
 const AppContent: React.FC = () => {
   const { state } = useApp();
@@ -13,6 +14,10 @@ const AppContent: React.FC = () => {
   const isAdminRoute = window.location.pathname === '/admin' || state.currentView === 'admin';
   
   const renderCurrentView = () => {
+    if (state.showOrderTracking) {
+      return <OrderTracking />;
+    }
+    
     if (isAdminRoute) {
       return <AdminRoute />;
     }
@@ -29,7 +34,7 @@ const AppContent: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isAdminRoute && <Header />}
+      {!isAdminRoute && !state.showOrderTracking && <Header />}
       <main>
         {renderCurrentView()}
       </main>

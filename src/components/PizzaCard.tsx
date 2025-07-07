@@ -1,540 +1,825 @@
 import React, { useState } from "react";
-import { Plus, Minus, ShoppingCart, X, Clock } from "lucide-react";
-import { Pizza } from "../types";
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ArrowLeft,
+  ShoppingBag,
+  MapPin,
+  Store,
+  CreditCard,
+  Banknote,
+  QrCode,
+  Edit3,
+  MessageSquare,
+} from "lucide-react";
 import { useApp } from "../contexts/AppContext";
-import { pizzaSizeConfig } from "../data/pizzas";
+import { Customer, PaymentInfo, Additional } from "../types";
+import PaymentModal from "./PaymentModal";
+import AdditionalsModal from "./AdditionalsModal";
 
-interface PizzaCardProps {
-  pizza: Pizza;
-  businessOpen?: boolean;
-}
-
-const PizzaCard: React.FC<PizzaCardProps> = ({
-  pizza,
-  businessOpen = true,
-}) => {
+const Cart: React.FC = () => {
   const { state, dispatch } = useApp();
-  const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState<
-    "small" | "medium" | "large" | "family"
-  >("medium");
-  const [selectedFlavors, setSelectedFlavors] = useState<Pizza[]>([pizza]);
-  const [showFlavorModal, setShowFlavorModal] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showAdditionals, setShowAdditionals] = useState(false);
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customer, setCustomer] = useState<Customer>({
+    name: "",
+    phone: "",
+    address: "",
+    neighborhood: "",
+    reference: "",
+    deliveryType: "delivery",
+  });
+  const [payment, setPayment] = useState<PaymentInfo>({
+    method: "dinheiro",
+  });
+  const [phoneError, setPhoneError] = useState("");
 
-  const getCurrentPrice = () => {
-    return pizza.sizes[selectedSize] || 0;
+  const total = state.cart.reduce(
+    (sum, item) => {
+      const additionalsTotal = item.selectedAdditionals?.reduce(
+        (addSum, additional) => addSum + additional.price,
+        0
+      ) || 0;
+      return sum + (item.price + additionalsTotal) * item.quantity;
+    },
+    0
+  );
+
+  const handleQuantityChange = (
+    index: number,
+    newQuantity: number
+  ) => {
+    const item = state.cart[index];
+    dispatch({
+      type: "UPDATE_CART_QUANTITY",
+      payload: { id: item.id, quantity: newQuantity, size: item.selectedSize },
+    });
   };
 
-  const getSizeConfig = () => {
-    if (pizza.category === "quadrada") {
-      return pizzaSizeConfig.quadrada[
-        selectedSize as keyof typeof pizzaSizeConfig.quadrada
-      ];
-    } else if (pizza.category === "redonda") {
-      return pizzaSizeConfig.redonda[
-        selectedSize as keyof typeof pizzaSizeConfig.redonda
-      ];
+  const handleRemoveItem = (index: number) => {
+    dispatch({
+      type: "REMOVE_FROM_CART",
+      payload: index.toString(),
+    });
+  };
+
+  const handleEditItem = (index: number) => {
+    setEditingItemIndex(index);
+    setShowAdditionals(true);
+  };
+
+  const handleUpdateItem = (additionals: Additional[], notes: string) => {
+    if (editingItemIndex !== null) {
+      const item = state.cart[editingItemIndex];
+      dispatch({
+        type: "UPDATE_CART_ITEM",
+        payload: {
+          id: item.id,
+          size: item.selectedSize,
+          updates: {
+            selectedAdditionals: additionals,
+            notes: notes,
+          },
+        },
+      });
     }
-    return null;
+    setShowAdditionals(false);
+    setEditingItemIndex(null);
   };
 
-  const getAvailableSizes = () => {
-    if (pizza.category === "quadrada") {
-      return ["small", "medium", "large", "family"] as const;
-    } else if (pizza.category === "redonda") {
-      return ["small", "medium", "large", "family"] as const;
+  const handleContinueShopping = () => {
+    dispatch({ type: "SET_VIEW", payload: "menu" });
+  };
+
+  const validatePhone = (phone: string): boolean => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+      setPhoneError("Telefone deve ter 10 ou 11 dígitos");
+      return false;
+    }
+    setPhoneError("");
+    return true;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setCustomer({ ...customer, phone: value });
+    if (value) {
+      validatePhone(value);
     } else {
-      return ["medium"] as const;
+      setPhoneError("");
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCustomer({
+            ...customer,
+            location: {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            },
+          });
+          dispatch({
+            type: "ADD_NOTIFICATION",
+            payload: "Localização capturada com sucesso!",
+          });
+        },
+        (error) => {
+          console.error("Erro ao obter localização:", error);
+          dispatch({
+            type: "ADD_NOTIFICATION",
+            payload: "Erro ao obter localização. Verifique as permissões.",
+          });
+        }
+      );
+    } else {
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Geolocalização não suportada pelo navegador.",
+      });
+    }
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isSubmitting) return;
+
+    if (!validatePhone(customer.phone)) {
+      return;
+    }
+
+    if (
+      customer.deliveryType === "delivery" &&
+      (!customer.address || !customer.neighborhood)
+    ) {
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Preencha o endereço para entrega!",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      console.log("Iniciando criação do pedido...");
+
+      const orderData = {
+        customer: {
+          name: customer.name,
+          phone: customer.phone,
+          address: customer.address || "",
+          neighborhood: customer.neighborhood || "",
+          reference: customer.reference || "",
+          deliveryType: customer.deliveryType,
+          location: customer.location,
+        },
+        items: state.cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          image: item.image,
+          category: item.category,
+          ingredients: item.ingredients,
+          quantity: item.quantity,
+          selectedSize: item.selectedSize,
+          selectedFlavors: item.selectedFlavors || [
+            { id: item.id, name: item.name },
+          ],
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
+          price: item.price,
+        })),
+        total,
+        payment: {
+          method: payment.method,
+          needsChange: payment.needsChange || false,
+          changeAmount: payment.changeAmount,
+          pixCode: payment.pixCode,
+          stripePaymentIntentId: payment.stripePaymentIntentId,
+        },
+      };
+
+      console.log("Dados do pedido preparados:", orderData);
+
+      // Criar pedido via dispatch (que enviará para o backend)
+      const order = {
+        id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        customer: orderData.customer,
+        items: orderData.items,
+        total: orderData.total,
+        status: "new" as const,
+        createdAt: new Date(),
+        payment: orderData.payment,
+      };
+
+      dispatch({ type: "CREATE_ORDER", payload: order });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Pedido enviado com sucesso!",
+      });
+
+      // Simulate WhatsApp notification
+      setTimeout(() => {
+        dispatch({
+          type: "ADD_NOTIFICATION",
+          payload: "📱 WhatsApp: Seu pedido foi recebido!",
+        });
+      }, 1000);
+    } catch (error) {
+      console.error("Erro ao criar pedido:", error);
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Erro ao enviar pedido. Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentData: PaymentInfo) => {
+    setPayment(paymentData);
+    setShowPayment(false);
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const orderData = {
+        customer: {
+          name: customer.name,
+          phone: customer.phone,
+          address: customer.address || "",
+          neighborhood: customer.neighborhood || "",
+          reference: customer.reference || "",
+          deliveryType: customer.deliveryType,
+          location: customer.location,
+        },
+        items: state.cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          image: item.image,
+          category: item.category,
+          ingredients: item.ingredients,
+          quantity: item.quantity,
+          selectedSize: item.selectedSize,
+          selectedFlavors: item.selectedFlavors || [
+            { id: item.id, name: item.name },
+          ],
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
+          price: item.price,
+        })),
+        total,
+        payment: paymentData,
+      };
+
+      const order = {
+        id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        customer: orderData.customer,
+        items: orderData.items,
+        total: orderData.total,
+        status: "new" as const,
+        createdAt: new Date(),
+        payment: paymentData,
+      };
+
+      dispatch({ type: "CREATE_ORDER", payload: order });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Pedido e pagamento processados com sucesso!",
+      });
+    } catch (error) {
+      console.error("Erro ao processar pagamento:", error);
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: "Erro ao processar pagamento. Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const getSizeLabel = (size: string) => {
     const labels = {
-      small: "P",
-      medium: "M",
-      large: "G",
-      family: "F",
+      small: "Pequena",
+      medium: "Média",
+      large: "Grande",
+      family: "Família",
     };
-    return labels[size as keyof typeof labels];
+    return labels[size as keyof typeof labels] || size;
   };
 
-  const handleSizeChange = (size: "small" | "medium" | "large" | "family") => {
-    setSelectedSize(size);
-    setSelectedFlavors([pizza]); // Reset flavors when size changes
+  const getPaymentMethodLabel = (method: string) => {
+    const labels = {
+      dinheiro: "Dinheiro",
+      pix: "PIX",
+      cartao: "Cartão",
+    };
+    return labels[method as keyof typeof labels] || method;
   };
 
-  const handleFlavorSelection = (flavor: Pizza) => {
-    const sizeConfig = getSizeConfig();
-    if (!sizeConfig) return;
-
-    const isAlreadySelected = selectedFlavors.some((f) => f.id === flavor.id);
-
-    if (isAlreadySelected) {
-      setSelectedFlavors(selectedFlavors.filter((f) => f.id !== flavor.id));
-    } else if (selectedFlavors.length < sizeConfig.maxFlavors) {
-      setSelectedFlavors([...selectedFlavors, flavor]);
+  const getPaymentIcon = (method: string) => {
+    switch (method) {
+      case "dinheiro":
+        return <Banknote className="h-4 w-4" />;
+      case "pix":
+        return <QrCode className="h-4 w-4" />;
+      case "cartao":
+        return <CreditCard className="h-4 w-4" />;
+      default:
+        return <Banknote className="h-4 w-4" />;
     }
   };
 
-  const handleAddToCart = () => {
-    if (!businessOpen) {
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload:
-          "Não é possível fazer pedidos fora do horário de funcionamento!",
-      });
-      return;
-    }
-
-    if (selectedFlavors.length === 0) {
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Selecione pelo menos um sabor!",
-      });
-      return;
-    }
-
-    dispatch({
-      type: "ADD_TO_CART",
-      payload: {
-        ...pizza,
-        quantity,
-        selectedSize,
-        selectedFlavors: [...selectedFlavors],
-        price: getCurrentPrice(),
-      },
-    });
-
-    const sizeConfig = getSizeConfig();
-    const sizeLabel = sizeConfig?.name || selectedSize;
-    const flavorNames = selectedFlavors.map((f) => f.name).join(", ");
-
-    dispatch({
-      type: "ADD_NOTIFICATION",
-      payload: `Pizza ${sizeLabel} (${flavorNames}) adicionada ao carrinho!`,
-    });
-
-    setQuantity(1);
-    setSelectedFlavors([pizza]);
-    setShowFlavorModal(false);
+  const getItemTotal = (item: any) => {
+    const additionalsTotal = item.selectedAdditionals?.reduce(
+      (sum: number, additional: Additional) => sum + additional.price,
+      0
+    ) || 0;
+    return (item.price + additionalsTotal) * item.quantity;
   };
 
-  const openFlavorModal = () => {
-    if (!businessOpen) {
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload:
-          "Não é possível fazer pedidos fora do horário de funcionamento!",
-      });
-      return;
-    }
+  if (state.cart.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="mb-6">
+            <ShoppingBag className="h-24 w-24 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Carrinho Vazio
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Adicione algumas pizzas deliciosas ao seu carrinho!
+            </p>
+          </div>
+          <button
+            onClick={() => dispatch({ type: "SET_VIEW", payload: "menu" })}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            Ver Cardápio
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-    const sizeConfig = getSizeConfig();
-    if (sizeConfig && sizeConfig.maxFlavors > 1) {
-      setShowFlavorModal(true);
-    } else {
-      handleAddToCart();
-    }
-  };
-
-  const isBeverage = pizza.category === "bebida";
-  const sizeConfig = getSizeConfig();
-  const availablePizzas = state.pizzas.filter(
-    (p) =>
-      (p.category === "quadrada" || p.category === "redonda") &&
-      p.category === pizza.category
-  );
-
-  return (
-    <>
-      {/* Mobile Layout (1 column) */}
-      <div className="md:hidden bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-        <div className="flex p-3 space-x-3">
-          <div className="relative flex-shrink-0">
-            <img
-              src={pizza.image}
-              alt={pizza.name}
-              className="w-20 h-20 object-cover rounded-lg"
-            />
-            <div className="absolute -top-1 -right-1 bg-red-600 text-white px-1 py-0.5 rounded-full text-xs font-bold">
-              {pizza.category === "quadrada"
-                ? "Q"
-                : pizza.category === "redonda"
-                ? "R"
-                : pizza.category === "doce"
-                ? "D"
-                : "B"}
-            </div>
-            {!businessOpen && (
-              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                <Clock className="h-6 w-6 text-white" />
-              </div>
-            )}
+  if (showCheckout) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center mb-6">
+            <button
+              onClick={() => setShowCheckout(false)}
+              className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Finalizar Pedido
+            </h2>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-gray-800 mb-1 truncate">
-              {pizza.name}
-            </h3>
-            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-              {pizza.description}
-            </p>
-
-            <div className="text-right mb-2">
-              <p className="text-lg font-bold text-red-600">
-                R$ {getCurrentPrice().toFixed(2)}
-              </p>
+          <form onSubmit={handleSubmitOrder} className="space-y-4">
+            {/* Delivery Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tipo de Entrega *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCustomer({ ...customer, deliveryType: "delivery" })
+                  }
+                  className={`p-3 rounded-lg border-2 transition-colors flex items-center justify-center space-x-2 ${
+                    customer.deliveryType === "delivery"
+                      ? "border-red-500 bg-red-50 text-red-700"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <MapPin className="h-5 w-5" />
+                  <span>Entrega</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCustomer({ ...customer, deliveryType: "pickup" })
+                  }
+                  className={`p-3 rounded-lg border-2 transition-colors flex items-center justify-center space-x-2 ${
+                    customer.deliveryType === "pickup"
+                      ? "border-red-500 bg-red-50 text-red-700"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <Store className="h-5 w-5" />
+                  <span>Retirada</span>
+                </button>
+              </div>
             </div>
 
-            {!isBeverage && (
-              <div className="mb-2">
-                <div className="flex space-x-1 mb-1">
-                  {getAvailableSizes().map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => handleSizeChange(size)}
-                      disabled={!businessOpen}
-                      className={`flex-1 px-1 py-1 rounded text-xs font-medium transition-colors ${
-                        selectedSize === size
-                          ? "bg-red-600 text-white"
-                          : businessOpen
-                          ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      }`}
-                    >
-                      {getSizeLabel(size)}
-                    </button>
-                  ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nome Completo *
+              </label>
+              <input
+                type="text"
+                required
+                value={customer.name}
+                onChange={(e) =>
+                  setCustomer({ ...customer, name: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Telefone/WhatsApp *
+              </label>
+              <input
+                type="tel"
+                required
+                value={customer.phone}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                  phoneError ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="(77) 99999-9999"
+              />
+              {phoneError && (
+                <p className="text-red-500 text-sm mt-1">{phoneError}</p>
+              )}
+            </div>
+
+            {customer.deliveryType === "delivery" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Endereço *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customer.address}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, address: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
                 </div>
-                {sizeConfig && (
-                  <p className="text-xs text-gray-500">
-                    {sizeConfig.slices} fatias • {sizeConfig.maxFlavors} sabor
-                    {sizeConfig.maxFlavors > 1 ? "es" : ""}
-                  </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bairro *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customer.neighborhood}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, neighborhood: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ponto de Referência
+                  </label>
+                  <input
+                    type="text"
+                    value={customer.reference}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, reference: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    <span>Compartilhar Localização</span>
+                  </button>
+                  {customer.location && (
+                    <p className="text-green-600 text-sm mt-1">
+                      ✓ Localização capturada
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {customer.deliveryType === "pickup" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">
+                  📍 Endereço para Retirada:
+                </h4>
+                <p className="text-blue-700 text-sm">
+                  Rua das Pizzas, 123 - Centro
+                  <br />
+                  Vitória da Conquista - BA
+                  <br />
+                  <strong>Horário:</strong> 18:00 às 23:00
+                </p>
+              </div>
+            )}
+
+            {/* Payment Method Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Forma de Pagamento *
+              </label>
+              <div className="space-y-2">
+                {state.businessSettings.payment.acceptCash && (
+                  <button
+                    type="button"
+                    onClick={() => setPayment({ method: "dinheiro" })}
+                    className={`w-full p-3 rounded-lg border-2 transition-colors flex items-center space-x-3 ${
+                      payment.method === "dinheiro"
+                        ? "border-red-500 bg-red-50 text-red-700"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <Banknote className="h-5 w-5" />
+                    <span>Dinheiro</span>
+                  </button>
+                )}
+
+                {state.businessSettings.payment.acceptPix && (
+                  <button
+                    type="button"
+                    onClick={() => setPayment({ method: "pix" })}
+                    className={`w-full p-3 rounded-lg border-2 transition-colors flex items-center space-x-3 ${
+                      payment.method === "pix"
+                        ? "border-red-500 bg-red-50 text-red-700"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <QrCode className="h-5 w-5" />
+                    <span>PIX</span>
+                  </button>
+                )}
+
+                {state.businessSettings.payment.acceptCard && (
+                  <button
+                    type="button"
+                    onClick={() => setPayment({ method: "cartao" })}
+                    className={`w-full p-3 rounded-lg border-2 transition-colors flex items-center space-x-3 ${
+                      payment.method === "cartao"
+                        ? "border-red-500 bg-red-50 text-red-700"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <CreditCard className="h-5 w-5" />
+                    <span>Cartão de Crédito</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Change for cash payment */}
+            {payment.method === "dinheiro" && (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="needsChange"
+                    checked={payment.needsChange || false}
+                    onChange={(e) =>
+                      setPayment({
+                        ...payment,
+                        needsChange: e.target.checked,
+                        changeAmount: e.target.checked
+                          ? payment.changeAmount
+                          : undefined,
+                      })
+                    }
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="needsChange"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Preciso de troco
+                  </label>
+                </div>
+
+                {payment.needsChange && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Troco para quanto?
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min={total}
+                      value={payment.changeAmount || ""}
+                      onChange={(e) =>
+                        setPayment({
+                          ...payment,
+                          changeAmount: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder={`Mínimo: R$ ${total.toFixed(2)}`}
+                    />
+                  </div>
                 )}
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={!businessOpen}
-                  className={`rounded-full p-1 transition-colors ${
-                    businessOpen
-                      ? "bg-gray-200 hover:bg-gray-300"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                <span className="font-medium px-1 text-xs">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  disabled={!businessOpen}
-                  className={`rounded-full p-1 transition-colors ${
-                    businessOpen
-                      ? "bg-gray-200 hover:bg-gray-300"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              </div>
-
-              <button
-                onClick={openFlavorModal}
-                disabled={!businessOpen}
-                className={`py-1 px-2 rounded-lg font-medium transition-colors flex items-center space-x-1 text-xs ${
-                  businessOpen
-                    ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                <ShoppingCart className="h-3 w-3" />
-                <span>
-                  {sizeConfig && sizeConfig.maxFlavors > 1
-                    ? "Escolher"
-                    : "Adicionar"}
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-lg font-semibold">Total:</span>
+                <span className="text-2xl font-bold text-red-600">
+                  R$ {total.toFixed(2)}
                 </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop Layout (original) */}
-      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-        <div className="relative">
-          <img
-            src={pizza.image}
-            alt={pizza.name}
-            className="w-full h-32 object-cover"
-          />
-          <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-            {pizza.category === "quadrada"
-              ? "Quadrada"
-              : pizza.category === "redonda"
-              ? "Redonda"
-              : pizza.category}
-          </div>
-          {!businessOpen && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-              <div className="text-center text-white">
-                <Clock className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm font-medium">Fechado</p>
               </div>
-            </div>
-          )}
-        </div>
 
-        <div className="p-3">
-          <h3 className="text-lg font-bold text-gray-800 mb-1">{pizza.name}</h3>
-          {/* <p className="text-gray-600 text-xs mb-2 line-clamp-2">
-            {pizza.description}
-          </p> */}
-
-          <div className="mb-2">
-            <p className="text-xs text-gray-500 mb-1">Ingredientes:</p>
-            <p className="text-xs text-gray-700 line-clamp-1">
-              {pizza.ingredients.join(", ")}
-            </p>
-          </div>
-
-          {!isBeverage && (
-            <div className="mb-3">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Tamanho:
-              </label>
-              <div className="flex space-x-1">
-                {getAvailableSizes().map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => handleSizeChange(size)}
-                    disabled={!businessOpen}
-                    className={`flex-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                      selectedSize === size
-                        ? "bg-red-600 text-white"
-                        : businessOpen
-                        ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    {getSizeLabel(size)}
-                  </button>
-                ))}
-              </div>
-              {sizeConfig && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {sizeConfig.slices} fatias • {sizeConfig.maxFlavors} sabor
-                  {sizeConfig.maxFlavors > 1 ? "es" : ""}
-                </p>
+              {payment.method === "cartao" ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPayment(true)}
+                  disabled={isSubmitting}
+                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                >
+                  <CreditCard className="h-5 w-5" />
+                  <span>
+                    {isSubmitting ? "Processando..." : "Pagar com Cartão"}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                >
+                  {getPaymentIcon(payment.method)}
+                  <span>
+                    {isSubmitting
+                      ? "Enviando Pedido..."
+                      : `Confirmar Pedido - ${getPaymentMethodLabel(
+                          payment.method
+                        )}`}
+                  </span>
+                </button>
               )}
             </div>
-          )}
-
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={!businessOpen}
-                className={`rounded-full p-1 transition-colors ${
-                  businessOpen
-                    ? "bg-gray-200 hover:bg-gray-300"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
-              >
-                <Minus className="h-3 w-3" />
-              </button>
-              <span className="font-medium px-2 text-sm">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                disabled={!businessOpen}
-                className={`rounded-full p-1 transition-colors ${
-                  businessOpen
-                    ? "bg-gray-200 hover:bg-gray-300"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            </div>
-            <div className="text-right mb-2">
-              <p className="text-xl font-bold text-red-600">
-                R$ {getCurrentPrice().toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={openFlavorModal}
-            disabled={!businessOpen}
-            className={`w-full py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1 text-sm ${
-              businessOpen
-                ? "bg-red-600 hover:bg-red-700 text-white"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            <ShoppingCart className="h-4 w-4" />
-            <span>
-              {sizeConfig && sizeConfig.maxFlavors > 1
-                ? "Escolher"
-                : "Adicionar"}
-            </span>
-          </button>
+          </form>
         </div>
+
+        {showPayment && (
+          <PaymentModal
+            amount={total}
+            onSuccess={handlePaymentSuccess}
+            onClose={() => setShowPayment(false)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Seu Carrinho</h2>
+        <button
+          onClick={handleContinueShopping}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+        >
+          <ShoppingBag className="h-4 w-4" />
+          <span>Continuar Pedindo</span>
+        </button>
       </div>
 
-      {/* Flavor Selection Modal */}
-      {showFlavorModal && sizeConfig && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">
-                  Escolha os Sabores
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Selecione até {sizeConfig.maxFlavors} sabor
-                  {sizeConfig.maxFlavors > 1 ? "es" : ""} para sua pizza{" "}
-                  {sizeConfig.name}
+      <div className="space-y-4">
+        {state.cart.map((item, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl shadow-md p-4"
+          >
+            <div className="flex items-center space-x-4">
+              <img
+                src={item.image}
+                alt={item.name}
+                className="w-16 h-16 object-cover rounded-lg"
+              />
+
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                <p className="text-sm text-gray-600">
+                  Tamanho: {getSizeLabel(item.selectedSize)}
                 </p>
-                <p className="text-sm text-gray-500">
-                  {selectedFlavors.length}/{sizeConfig.maxFlavors} sabores
-                  selecionados
+                {item.selectedFlavors && item.selectedFlavors.length > 1 && (
+                  <p className="text-sm text-gray-600">
+                    Sabores:{" "}
+                    {item.selectedFlavors.map((f) => f.name).join(", ")}
+                  </p>
+                )}
+                {item.selectedAdditionals && item.selectedAdditionals.length > 0 && (
+                  <p className="text-sm text-gray-600">
+                    Adicionais:{" "}
+                    {item.selectedAdditionals.map((a) => a.name).join(", ")}
+                  </p>
+                )}
+                {item.notes && (
+                  <div className="flex items-center space-x-1 text-sm text-gray-600">
+                    <MessageSquare className="h-3 w-3" />
+                    <span>{item.notes}</span>
+                  </div>
+                )}
+                <p className="text-lg font-bold text-red-600">
+                  R$ {getItemTotal(item).toFixed(2)}
                 </p>
               </div>
+
+              <div className="flex flex-col items-end space-y-2">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleEditItem(index)}
+                    className="text-blue-600 hover:text-blue-700 p-1 transition-colors"
+                    title="Editar item"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleRemoveItem(index)}
+                    className="text-red-600 hover:text-red-700 p-1 transition-colors"
+                    title="Remover item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                <button
+                  onClick={() =>
+                    handleQuantityChange(
+                      index,
+                      item.quantity - 1
+                    )
+                  }
+                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="font-medium px-2">{item.quantity}</span>
+                <button
+                  onClick={() =>
+                    handleQuantityChange(
+                      item.quantity + 1
+                    )
+                  }
+                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-1 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+
               <button
-                onClick={() => setShowFlavorModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={() => handleRemoveItem(item.id, item.selectedSize)}
+                className="text-red-600 hover:text-red-700 p-2 transition-colors"
               >
-                <X className="h-5 w-5" />
+                <Trash2 className="h-5 w-5" />
               </button>
             </div>
-
-            <div className="p-4">
-              {/* Mobile Layout for Modal */}
-              <div className="md:hidden space-y-3 mb-4">
-                {availablePizzas.map((availablePizza) => {
-                  const isSelected = selectedFlavors.some(
-                    (f) => f.id === availablePizza.id
-                  );
-                  const canSelect =
-                    selectedFlavors.length < sizeConfig.maxFlavors ||
-                    isSelected;
-                  const isDisabled = !canSelect;
-
-                  return (
-                    <div
-                      key={availablePizza.id}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        isSelected
-                          ? "border-red-500 bg-red-50"
-                          : canSelect
-                          ? "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                          : "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
-                      } ${isDisabled ? "pointer-events-none" : ""}`}
-                      onClick={() =>
-                        canSelect && handleFlavorSelection(availablePizza)
-                      }
-                    >
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={availablePizza.image}
-                          alt={availablePizza.name}
-                          className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-800 text-sm truncate">
-                            {availablePizza.name}
-                          </h4>
-                          <p className="text-xs text-gray-600 line-clamp-2">
-                            {availablePizza.description}
-                          </p>
-
-                          {isSelected && (
-                            <span className="inline-block mt-1 px-2 py-1 bg-red-600 text-white text-xs rounded-full">
-                              ✓ Selecionado
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop Layout for Modal */}
-              <div className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-                {availablePizzas.map((availablePizza) => {
-                  const isSelected = selectedFlavors.some(
-                    (f) => f.id === availablePizza.id
-                  );
-                  const canSelect =
-                    selectedFlavors.length < sizeConfig.maxFlavors ||
-                    isSelected;
-                  const isDisabled = !canSelect;
-
-                  return (
-                    <div
-                      key={availablePizza.id}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        isSelected
-                          ? "border-red-500 bg-red-50"
-                          : canSelect
-                          ? "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                          : "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
-                      } ${isDisabled ? "pointer-events-none" : ""}`}
-                      onClick={() =>
-                        canSelect && handleFlavorSelection(availablePizza)
-                      }
-                    >
-                      <div className="flex flex-col items-center space-y-2">
-                        <img
-                          src={availablePizza.image}
-                          alt={availablePizza.name}
-                          className="w-12 h-12 object-cover rounded-lg"
-                        />
-                        <div className="text-center">
-                          <h4 className="font-semibold text-gray-800 text-sm">
-                            {availablePizza.name}
-                          </h4>
-                          <p className="text-xs text-gray-600 line-clamp-2">
-                            {availablePizza.description}
-                          </p>
-                          {isSelected && (
-                            <span className="inline-block mt-1 px-2 py-1 bg-red-600 text-white text-xs rounded-full">
-                              ✓
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setShowFlavorModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddToCart}
-                  disabled={selectedFlavors.length === 0}
-                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Adicionar ao Carrinho
-                </button>
-              </div>
-            </div>
           </div>
+        ))}
+      </div>
+
+      <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-xl font-semibold">Total:</span>
+          <span className="text-3xl font-bold text-red-600">
+            R$ {total.toFixed(2)}
+          </span>
         </div>
-      )}
-    </>
+
+        <button
+          onClick={() => setShowCheckout(true)}
+          disabled={isSubmitting}
+          className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+        >
+          {isSubmitting ? "Processando..." : "Finalizar Pedido"}
+        </button>
+      </div>
+    </div>
   );
 };
 
-export default PizzaCard;
+export default Cart;

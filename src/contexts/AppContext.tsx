@@ -11,11 +11,13 @@ import {
   Customer,
   OrderStatus,
   Pizza,
+  Additional,
   BusinessSettings,
   BusinessHours,
   PaymentSettings,
 } from "../types";
 import { pizzas as initialPizzas } from "../data/pizzas";
+import { additionals as initialAdditionals } from "../data/additionals";
 import { whatsappService } from "../services/whatsapp";
 import { apiService } from "../services/api";
 
@@ -25,10 +27,13 @@ interface AppState {
   currentView: "menu" | "cart" | "admin";
   notifications: string[];
   pizzas: Pizza[];
+  additionals: Additional[];
   showBeverageSuggestions: boolean;
   lastAddedPizza: Pizza | null;
   businessSettings: BusinessSettings;
   isLoading: boolean;
+  currentOrder: Order | null;
+  showOrderTracking: boolean;
 }
 
 type AppAction =
@@ -37,6 +42,10 @@ type AppAction =
   | {
       type: "UPDATE_CART_QUANTITY";
       payload: { id: string; quantity: number; size: string };
+    }
+  | {
+      type: "UPDATE_CART_ITEM";
+      payload: { id: string; size: string; updates: Partial<CartItem> };
     }
   | { type: "CLEAR_CART" }
   | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" }
@@ -50,14 +59,20 @@ type AppAction =
   | { type: "ADD_PIZZA"; payload: Pizza }
   | { type: "UPDATE_PIZZA"; payload: Pizza }
   | { type: "DELETE_PIZZA"; payload: string }
+  | { type: "ADD_ADDITIONAL"; payload: Additional }
+  | { type: "UPDATE_ADDITIONAL"; payload: Additional }
+  | { type: "DELETE_ADDITIONAL"; payload: string }
   | { type: "SHOW_BEVERAGE_SUGGESTIONS"; payload: Pizza }
   | { type: "HIDE_BEVERAGE_SUGGESTIONS" }
   | { type: "UPDATE_BUSINESS_SETTINGS"; payload: Partial<BusinessSettings> }
   | { type: "UPDATE_PAYMENT_SETTINGS"; payload: PaymentSettings }
   | { type: "LOAD_BUSINESS_SETTINGS"; payload: BusinessSettings }
   | { type: "SET_PIZZAS"; payload: Pizza[] }
+  | { type: "SET_ADDITIONALS"; payload: Additional[] }
   | { type: "SET_ORDERS"; payload: Order[] }
-  | { type: "SET_LOADING"; payload: boolean };
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_CURRENT_ORDER"; payload: Order | null }
+  | { type: "SHOW_ORDER_TRACKING"; payload: boolean };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -126,10 +141,13 @@ const initialState: AppState = {
   currentView: "menu",
   notifications: [],
   pizzas: initialPizzas,
+  additionals: initialAdditionals,
   showBeverageSuggestions: false,
   lastAddedPizza: null,
   businessSettings: loadBusinessSettings(),
   isLoading: false,
+  currentOrder: null,
+  showOrderTracking: false,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -140,14 +158,26 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "SET_PIZZAS":
       return { ...state, pizzas: action.payload };
 
+    case "SET_ADDITIONALS":
+      return { ...state, additionals: action.payload };
+
     case "SET_ORDERS":
       return { ...state, orders: action.payload };
+
+    case "SET_CURRENT_ORDER":
+      return { ...state, currentOrder: action.payload };
+
+    case "SHOW_ORDER_TRACKING":
+      return { ...state, showOrderTracking: action.payload };
 
     case "ADD_TO_CART":
       const existingItemIndex = state.cart.findIndex(
         (item) =>
           item.id === action.payload.id &&
-          item.selectedSize === action.payload.selectedSize
+          item.selectedSize === action.payload.selectedSize &&
+          JSON.stringify(item.selectedFlavors) === JSON.stringify(action.payload.selectedFlavors) &&
+          JSON.stringify(item.selectedAdditionals) === JSON.stringify(action.payload.selectedAdditionals) &&
+          item.notes === action.payload.notes
       );
 
       if (existingItemIndex >= 0) {
@@ -173,11 +203,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         cart: state.cart.filter(
-          (item) =>
-            !(
-              item.id === action.payload.split("-")[0] &&
-              item.selectedSize === action.payload.split("-")[1]
-            )
+          (item, index) => index.toString() !== action.payload
         ),
       };
 
@@ -194,6 +220,17 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           .filter((item) => item.quantity > 0),
       };
 
+    case "UPDATE_CART_ITEM":
+      return {
+        ...state,
+        cart: state.cart.map((item, index) =>
+          item.id === action.payload.id &&
+          item.selectedSize === action.payload.size
+            ? { ...item, ...action.payload.updates }
+            : item
+        ),
+      };
+
     case "CLEAR_CART":
       return { ...state, cart: [] };
 
@@ -206,18 +243,14 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         action.payload
       );
 
+      // Gerar ID único para evitar duplicatas
+      const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const orderWithId = { ...action.payload, id: orderId };
+
       // Preparar dados para envio ao backend
       const orderToSend = {
-        customer: {
-          name: action.payload.customer.name,
-          phone: action.payload.customer.phone,
-          address: action.payload.customer.address || "",
-          neighborhood: action.payload.customer.neighborhood || "",
-          reference: action.payload.customer.reference || "",
-          deliveryType: action.payload.customer.deliveryType,
-          location: action.payload.customer.location,
-        },
-        items: action.payload.items.map((item) => ({
+        customer: orderWithId.customer,
+        items: orderWithId.items.map((item) => ({
           id: item.id,
           name: item.name,
           description: item.description,
@@ -229,16 +262,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           selectedFlavors: item.selectedFlavors || [
             { id: item.id, name: item.name },
           ],
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
           price: item.price,
         })),
-        total: action.payload.total,
-        payment: {
-          method: action.payload.payment.method,
-          needsChange: action.payload.payment.needsChange || false,
-          changeAmount: action.payload.payment.changeAmount,
-          pixCode: action.payload.payment.pixCode,
-          stripePaymentIntentId: action.payload.payment.stripePaymentIntentId,
-        },
+        total: orderWithId.total,
+        payment: orderWithId.payment,
       };
 
       console.log("Dados preparados para envio ao backend:", orderToSend);
@@ -278,8 +307,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       setTimeout(async () => {
         try {
           await whatsappService.sendOrderNotification(
-            action.payload.customer.phone,
-            action.payload
+            orderWithId.customer.phone,
+            orderWithId
           );
         } catch (error) {
           console.error("Erro ao enviar notificação WhatsApp:", error);
@@ -288,8 +317,10 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
       return {
         ...state,
-        orders: [...state.orders, action.payload],
+        orders: [...state.orders, orderWithId],
         cart: [],
+        currentOrder: orderWithId,
+        showOrderTracking: true,
       };
 
     case "UPDATE_ORDER_STATUS":
@@ -303,13 +334,21 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           console.error("Erro ao atualizar status no backend:", error);
         });
 
+      const updatedOrders = state.orders.map((order) =>
+        order.id === action.payload.id
+          ? { ...order, status: action.payload.status }
+          : order
+      );
+
+      // Atualizar pedido atual se for o mesmo
+      const updatedCurrentOrder = state.currentOrder?.id === action.payload.id
+        ? { ...state.currentOrder, status: action.payload.status }
+        : state.currentOrder;
+
       return {
         ...state,
-        orders: state.orders.map((order) =>
-          order.id === action.payload.id
-            ? { ...order, status: action.payload.status }
-            : order
-        ),
+        orders: updatedOrders,
+        currentOrder: updatedCurrentOrder,
       };
 
     case "ADD_NOTIFICATION":
@@ -401,6 +440,26 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         pizzas: state.pizzas.filter((pizza) => pizza.id !== action.payload),
+      };
+
+    case "ADD_ADDITIONAL":
+      return {
+        ...state,
+        additionals: [...state.additionals, action.payload],
+      };
+
+    case "UPDATE_ADDITIONAL":
+      return {
+        ...state,
+        additionals: state.additionals.map((additional) =>
+          additional.id === action.payload.id ? action.payload : additional
+        ),
+      };
+
+    case "DELETE_ADDITIONAL":
+      return {
+        ...state,
+        additionals: state.additionals.filter((additional) => additional.id !== action.payload),
       };
 
     case "SHOW_BEVERAGE_SUGGESTIONS":

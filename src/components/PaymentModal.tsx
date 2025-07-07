@@ -13,6 +13,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
   const { state } = useApp();
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao'>('pix');
   const [pixCopied, setPixCopied] = useState(false);
+  const [pixPaid, setPixPaid] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const [cardData, setCardData] = useState({
     number: '',
     expiry: '',
@@ -38,9 +40,29 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
   };
 
   const handlePixPayment = () => {
+    setCheckingPayment(true);
+    
+    // Simular verificação de pagamento PIX
+    setTimeout(() => {
+      setPixPaid(true);
+      setCheckingPayment(false);
+      
+      setTimeout(() => {
+        onSuccess({
+          method: 'pix',
+          pixCode: generatePixCode(),
+          pixPaid: true,
+          pixTransactionId: `pix_${Date.now()}`
+        });
+      }, 1000);
+    }, 3000);
+  };
+
+  const handlePixConfirm = () => {
     onSuccess({
       method: 'pix',
-      pixCode: generatePixCode()
+      pixCode: generatePixCode(),
+      pixPaid: false
     });
   };
 
@@ -131,12 +153,31 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
                   Após realizar o pagamento, clique em "Confirmar Pagamento"
                 </p>
                 
-                <button
-                  onClick={handlePixPayment}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
-                >
-                  Confirmar Pagamento PIX
-                </button>
+                {!pixPaid ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handlePixPayment}
+                      disabled={checkingPayment}
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                    >
+                      {checkingPayment ? 'Verificando Pagamento...' : 'Simular Pagamento PIX'}
+                    </button>
+                    
+                    <button
+                      onClick={handlePixConfirm}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                    >
+                      Confirmar Pagamento Manual
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <p className="text-green-800 font-medium">✅ Pagamento PIX Confirmado!</p>
+                      <p className="text-green-600 text-sm">Processando pedido...</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

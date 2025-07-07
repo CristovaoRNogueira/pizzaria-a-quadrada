@@ -52,7 +52,10 @@ const Cart: React.FC = () => {
   const handleRemoveItem = (id: string, size: string) => {
     dispatch({
       type: "REMOVE_FROM_CART",
-      payload: `${id}-${size}`,
+      payload: state.cart.findIndex(item => 
+        item.id === id && 
+        item.selectedSize === size
+      ).toString(),
     });
   };
 
@@ -684,6 +687,17 @@ const Cart: React.FC = () => {
                   <p className="text-sm text-gray-600">
                     Sabores:{" "}
                     {item.selectedFlavors.map((f) => f.name).join(", ")}
+                  </p>
+                )}
+                {item.selectedAdditionals && item.selectedAdditionals.length > 0 && (
+                  <p className="text-sm text-gray-600">
+                    Adicionais:{" "}
+                    {item.selectedAdditionals.map((add) => add.name).join(", ")}
+                  </p>
+                )}
+                {item.notes && (
+                  <p className="text-sm text-gray-600 italic">
+                    Obs: {item.notes}
                   </p>
                 )}
                 <p className="text-lg font-bold text-red-600">
