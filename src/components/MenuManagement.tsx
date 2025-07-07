@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppContext } from '../contexts/AppContext';
+import { useApp } from '../contexts/AppContext';
 import { Pizza, PizzaSize, PizzaCategory } from '../types';
 import { Plus, Edit2, Trash2, Save, X, Upload } from 'lucide-react';
 
@@ -13,7 +13,7 @@ interface FormData {
 }
 
 const MenuManagement: React.FC = () => {
-  const { state, dispatch } = useAppContext();
+  const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editingPizza, setEditingPizza] = useState<Pizza | null>(null);
   const [formData, setFormData] = useState<FormData>({
