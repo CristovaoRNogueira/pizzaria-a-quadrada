@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LogOut, 
   BarChart3, 
@@ -252,39 +252,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   // Verificar permissões do usuário
-  const hasPermission = (section: string, action?: string) => {
-    if (!state.currentUser || !state.currentUser.permissions) {
-      return userRole === 'admin'; // Fallback para admin
-    }
-    
-    const permissions = state.currentUser.permissions;
-    
-    switch (section) {
-      case 'dashboard':
-        return permissions.dashboard;
-      case 'orders':
-        if (!action) return permissions.orders.view;
-        return permissions.orders[action as keyof typeof permissions.orders];
-      case 'menu':
-        if (!action) return permissions.menu.view;
-        return permissions.menu[action as keyof typeof permissions.menu];
-      case 'settings':
-        if (!action) return permissions.settings.view;
-        return permissions.settings[action as keyof typeof permissions.settings];
-      case 'delivery':
-        if (!action) return permissions.delivery.view;
-        return permissions.delivery[action as keyof typeof permissions.delivery];
-      default:
-        return false;
-    }
-  };
+  const hasPermission = React.useCallback(
+    (section: string, action?: string) => {
+      if (!state.currentUser || !state.currentUser.permissions) {
+        return userRole === 'admin'; // Fallback para admin
+      }
+      
+      const permissions = state.currentUser.permissions;
+      
+      switch (section) {
+        case 'dashboard':
+          return permissions.dashboard;
+        case 'orders':
+          if (!action) return permissions.orders.view;
+          return permissions.orders[action as keyof typeof permissions.orders];
+        case 'menu':
+          if (!action) return permissions.menu.view;
+          return permissions.menu[action as keyof typeof permissions.menu];
+        case 'settings':
+          if (!action) return permissions.settings.view;
+          return permissions.settings[action as keyof typeof permissions.settings];
+        case 'delivery':
+          if (!action) return permissions.delivery.view;
+          return permissions.delivery[action as keyof typeof permissions.delivery];
+        default:
+          return false;
+      }
+    },
+    [state.currentUser, userRole]
+  );
 
   // Definir aba inicial baseada nas permissões
   useEffect(() => {
     if (!hasPermission('dashboard') && hasPermission('orders')) {
       setActiveTab('orders');
     }
-  }, [state.currentUser]);
+  }, [state.currentUser, hasPermission]);
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -401,7 +404,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setOrderStatusTab(key as any)}
+              onClick={() => setOrderStatusTab(key as 'all' | 'new' | 'accepted' | 'production' | 'delivery' | 'completed')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 orderStatusTab === key
                   ? 'border-red-500 text-red-600 bg-red-50'
@@ -415,7 +418,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
                   ? 'bg-red-100 text-red-700'
                   : 'bg-gray-100 text-gray-600'
               }`}>
-                {getOrderCountByStatus(key as any)}
+                {getOrderCountByStatus(key as 'all' | 'new' | 'accepted' | 'production' | 'delivery' | 'completed')}
               </span>
             </button>
           ))}
