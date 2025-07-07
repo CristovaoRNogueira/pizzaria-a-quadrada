@@ -156,6 +156,19 @@ app.post("/api/pizzas", authenticateToken, async (req, res) => {
       sizes,
     });
 
+    // Verificar se já existe uma pizza com o mesmo nome
+    const existingPizza = await prisma.pizza.findFirst({
+      where: { 
+        name: name,
+        isActive: true 
+      },
+    });
+
+    if (existingPizza) {
+      return res.status(400).json({ 
+        error: "Já existe uma pizza com este nome no cardápio" 
+      });
+    }
     const pizza = await prisma.pizza.create({
       data: {
         name,
@@ -194,6 +207,20 @@ app.put("/api/pizzas/:id", authenticateToken, async (req, res) => {
       sizes,
     });
 
+    // Verificar se já existe outra pizza com o mesmo nome
+    const existingPizza = await prisma.pizza.findFirst({
+      where: { 
+        name: name,
+        isActive: true,
+        NOT: { id: id }
+      },
+    });
+
+    if (existingPizza) {
+      return res.status(400).json({ 
+        error: "Já existe uma pizza com este nome no cardápio" 
+      });
+    }
     const pizza = await prisma.pizza.update({
       where: { id },
       data: {
@@ -234,6 +261,101 @@ app.delete("/api/pizzas/:id", authenticateToken, async (req, res) => {
     res.json({ message: "Pizza removida com sucesso" });
   } catch (error) {
     console.error("Erro ao remover pizza:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rotas de adicionais
+app.get("/api/additionals", async (req, res) => {
+  try {
+    console.log("Buscando adicionais...");
+    const additionals = await prisma.additional.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+    });
+
+    console.log(`Encontrados ${additionals.length} adicionais`);
+    res.json(additionals);
+  } catch (error) {
+    console.error("Erro ao buscar adicionais:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.post("/api/additionals", authenticateToken, async (req, res) => {
+  try {
+    const { name, description, price, category } = req.body;
+
+    console.log("Dados recebidos para criar adicional:", {
+      name,
+      description,
+      price,
+      category,
+    });
+
+    const additional = await prisma.additional.create({
+      data: {
+        name,
+        description,
+        price,
+        category,
+      },
+    });
+
+    console.log("Adicional criado no banco:", additional);
+    res.json(additional);
+  } catch (error) {
+    console.error("Erro ao criar adicional:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.put("/api/additionals/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, category } = req.body;
+
+    console.log("Dados recebidos para atualizar adicional:", {
+      id,
+      name,
+      description,
+      price,
+      category,
+    });
+
+    const additional = await prisma.additional.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        price,
+        category,
+      },
+    });
+
+    console.log("Adicional atualizado no banco:", additional);
+    res.json(additional);
+  } catch (error) {
+    console.error("Erro ao atualizar adicional:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.delete("/api/additionals/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Removendo adicional:", id);
+
+    await prisma.additional.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    console.log("Adicional removido com sucesso");
+    res.json({ message: "Adicional removido com sucesso" });
+  } catch (error) {
+    console.error("Erro ao remover adicional:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -501,6 +623,30 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
   }
 });
 
+app.delete("/api/orders/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Excluindo pedido:", id);
+
+    // Excluir itens do pedido primeiro (devido à foreign key)
+    await prisma.orderItem.deleteMany({
+      where: { orderId: parseInt(id) },
+    });
+
+    // Excluir o pedido
+    await prisma.order.delete({
+      where: { id: parseInt(id) },
+    });
+
+    console.log("Pedido excluído com sucesso");
+    res.json({ message: "Pedido excluído com sucesso" });
+  } catch (error) {
+    console.error("Erro ao excluir pedido:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
 // Rotas de configurações de negócio
 app.get("/api/business-settings", async (req, res) => {
   try {
@@ -592,6 +738,19 @@ app.get("/api/business-settings", async (req, res) => {
           acceptPix: defaultSettings.acceptPix,
           acceptCard: defaultSettings.acceptCard,
         },
+        establishment: {
+          name: defaultSettings.establishmentName,
+          phone: defaultSettings.establishmentPhone,
+          instagram: defaultSettings.establishmentInstagram,
+          address: defaultSettings.establishmentAddress,
+          email: defaultSettings.establishmentEmail,
+        },
+        promotionBanner: {
+          active: defaultSettings.promotionBannerActive,
+          title: defaultSettings.promotionBannerTitle,
+          message: defaultSettings.promotionBannerMessage,
+          color: defaultSettings.promotionBannerColor,
+        },
       };
 
       return res.json(formattedSettings);
@@ -615,6 +774,19 @@ app.get("/api/business-settings", async (req, res) => {
         acceptPix: settings.acceptPix,
         acceptCard: settings.acceptCard,
       },
+      establishment: {
+        name: settings.establishmentName,
+        phone: settings.establishmentPhone,
+        instagram: settings.establishmentInstagram,
+        address: settings.establishmentAddress,
+        email: settings.establishmentEmail,
+      },
+      promotionBanner: {
+        active: settings.promotionBannerActive,
+        title: settings.promotionBannerTitle,
+        message: settings.promotionBannerMessage,
+        color: settings.promotionBannerColor,
+      },
     };
 
     res.json(formattedSettings);
@@ -626,13 +798,15 @@ app.get("/api/business-settings", async (req, res) => {
 
 app.put("/api/business-settings", authenticateToken, async (req, res) => {
   try {
-    const { isOpen, closedMessage, businessHours, payment } = req.body;
+    const { isOpen, closedMessage, businessHours, payment, establishment, promotionBanner } = req.body;
 
     console.log("Dados recebidos para atualizar configurações:", {
       isOpen,
       closedMessage,
       businessHours,
       payment,
+      establishment,
+      promotionBanner,
     });
 
     // Atualizar configurações principais
@@ -651,6 +825,15 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
           payment?.acceptPix !== undefined ? payment.acceptPix : undefined,
         acceptCard:
           payment?.acceptCard !== undefined ? payment.acceptCard : undefined,
+        establishmentName: establishment?.name || undefined,
+        establishmentPhone: establishment?.phone || undefined,
+        establishmentInstagram: establishment?.instagram || undefined,
+        establishmentAddress: establishment?.address || undefined,
+        establishmentEmail: establishment?.email || undefined,
+        promotionBannerActive: promotionBanner?.active !== undefined ? promotionBanner.active : undefined,
+        promotionBannerTitle: promotionBanner?.title || undefined,
+        promotionBannerMessage: promotionBanner?.message || undefined,
+        promotionBannerColor: promotionBanner?.color || undefined,
       },
       create: {
         id: "default",
@@ -661,6 +844,15 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
         acceptCash: payment?.acceptCash ?? true,
         acceptPix: payment?.acceptPix ?? true,
         acceptCard: payment?.acceptCard ?? false,
+        establishmentName: establishment?.name || "Pizzaria a Quadrada",
+        establishmentPhone: establishment?.phone || "+55 77 99974-2491",
+        establishmentInstagram: establishment?.instagram || "@pizzariaquadrada",
+        establishmentAddress: establishment?.address || "Rua das Pizzas, 123 - Centro, Vitória da Conquista - BA",
+        establishmentEmail: establishment?.email || "contato@pizzariaquadrada.com",
+        promotionBannerActive: promotionBanner?.active ?? false,
+        promotionBannerTitle: promotionBanner?.title || "",
+        promotionBannerMessage: promotionBanner?.message || "",
+        promotionBannerColor: promotionBanner?.color || "#dc2626",
       },
     });
 
@@ -696,6 +888,174 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
     res.json({ message: "Configurações atualizadas com sucesso" });
   } catch (error) {
     console.error("Erro ao atualizar configurações:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// Rotas de usuários
+app.get("/api/users", authenticateToken, async (req, res) => {
+  try {
+    console.log("Buscando usuários...");
+    const users = await prisma.admin.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        permissions: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    console.log(`Encontrados ${users.length} usuários`);
+    res.json(users);
+  } catch (error) {
+    console.error("Erro ao buscar usuários:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.post("/api/users", authenticateToken, async (req, res) => {
+  try {
+    const { name, email, password, role, permissions } = req.body;
+
+    console.log("Dados recebidos para criar usuário:", {
+      name,
+      email,
+      role,
+      permissions,
+    });
+
+    // Verificar se já existe um usuário com o mesmo email
+    const existingUser = await prisma.admin.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: "Já existe um usuário com este email" 
+      });
+    }
+
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.admin.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        permissions,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        permissions: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    console.log("Usuário criado no banco:", user);
+    res.json(user);
+  } catch (error) {
+    console.error("Erro ao criar usuário:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.put("/api/users/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, password, role, permissions } = req.body;
+
+    console.log("Dados recebidos para atualizar usuário:", {
+      id,
+      name,
+      email,
+      role,
+      permissions,
+    });
+
+    // Verificar se já existe outro usuário com o mesmo email
+    const existingUser = await prisma.admin.findFirst({
+      where: { 
+        email: email,
+        NOT: { id: id }
+      },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: "Já existe um usuário com este email" 
+      });
+    }
+
+    const updateData: any = {
+      name,
+      email,
+      role,
+      permissions,
+    };
+
+    // Só atualizar a senha se foi fornecida
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.admin.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        permissions: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    console.log("Usuário atualizado no banco:", user);
+    res.json(user);
+  } catch (error) {
+    console.error("Erro ao atualizar usuário:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.delete("/api/users/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Removendo usuário:", id);
+
+    // Não permitir excluir o usuário admin principal
+    const user = await prisma.admin.findUnique({
+      where: { id },
+    });
+
+    if (user && user.email === "admin@pizzariaquadrada.com") {
+      return res.status(400).json({ 
+        error: "Não é possível excluir o usuário administrador principal" 
+      });
+    }
+
+    await prisma.admin.delete({
+      where: { id },
+    });
+
+    console.log("Usuário removido com sucesso");
+    res.json({ message: "Usuário removido com sucesso" });
+  } catch (error) {
+    console.error("Erro ao remover usuário:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

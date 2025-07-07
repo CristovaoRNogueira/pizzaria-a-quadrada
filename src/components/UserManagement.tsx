@@ -64,6 +64,15 @@ const UserManagement: React.FC = () => {
       return;
     }
 
+    // Verificar se já existe um usuário com o mesmo email
+    const existingUser = users.find(user => 
+      user.email.toLowerCase() === formData.email.toLowerCase()
+    );
+
+    if (existingUser) {
+      alert('Já existe um usuário com este email');
+      return;
+    }
     const newUser: User = {
       id: Date.now().toString(),
       name: formData.name,
@@ -74,8 +83,21 @@ const UserManagement: React.FC = () => {
       createdAt: new Date(),
     };
 
-    setUsers([...users, newUser]);
-    resetForm();
+    // Enviar para o backend
+    apiService.createUser({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      role: formData.role,
+      permissions: formData.permissions
+    }).then((response) => {
+      setUsers([...users, response]);
+      resetForm();
+      alert('Usuário criado com sucesso!');
+    }).catch((error) => {
+      console.error('Erro ao criar usuário:', error);
+      alert('Erro ao criar usuário: ' + (error.response?.data?.error || error.message));
+    });
   };
 
   const handleUpdateUser = () => {
@@ -83,6 +105,15 @@ const UserManagement: React.FC = () => {
       return;
     }
 
+    // Verificar se já existe outro usuário com o mesmo email
+    const existingUser = users.find(user => 
+      user.email.toLowerCase() === formData.email.toLowerCase() && user.id !== editingUser.id
+    );
+
+    if (existingUser) {
+      alert('Já existe um usuário com este email');
+      return;
+    }
     const updatedUser: User = {
       ...editingUser,
       name: formData.name,
@@ -91,8 +122,27 @@ const UserManagement: React.FC = () => {
       permissions: { ...formData.permissions },
     };
 
-    setUsers(users.map(user => user.id === editingUser.id ? updatedUser : user));
-    resetForm();
+    // Enviar para o backend
+    const updateData: any = {
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+      permissions: formData.permissions
+    };
+
+    if (formData.password) {
+      updateData.password = formData.password;
+    }
+
+    apiService.updateUser(editingUser.id, updateData)
+      .then((response) => {
+        setUsers(users.map(user => user.id === editingUser.id ? response : user));
+        resetForm();
+        alert('Usuário atualizado com sucesso!');
+      }).catch((error) => {
+        console.error('Erro ao atualizar usuário:', error);
+        alert('Erro ao atualizar usuário: ' + (error.response?.data?.error || error.message));
+      });
   };
 
   const handleDeleteUser = (id: string) => {
@@ -102,7 +152,14 @@ const UserManagement: React.FC = () => {
     }
 
     if (confirm('Tem certeza que deseja excluir este usuário?')) {
-      setUsers(users.filter(user => user.id !== id));
+      apiService.deleteUser(id)
+        .then(() => {
+          setUsers(users.filter(user => user.id !== id));
+          alert('Usuário excluído com sucesso!');
+        }).catch((error) => {
+          console.error('Erro ao excluir usuário:', error);
+          alert('Erro ao excluir usuário: ' + (error.response?.data?.error || error.message));
+        });
     }
   };
 
@@ -149,6 +206,17 @@ const UserManagement: React.FC = () => {
     setShowAddForm(false);
     setShowPassword(false);
   };
+
+  // Carregar usuários do backend
+  useEffect(() => {
+    apiService.getUsers()
+      .then((response) => {
+        setUsers(response);
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar usuários:', error);
+      });
+  }, []);
 
   const handleRoleChange = (role: 'admin' | 'operator' | 'delivery') => {
     let permissions = { ...formData.permissions };

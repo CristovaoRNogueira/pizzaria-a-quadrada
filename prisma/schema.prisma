@@ -53,6 +53,7 @@ model Customer {
   address      String?
   neighborhood String?
   reference    String?
+  notes        String?  // Observações do pedido
   deliveryType String // 'delivery' | 'pickup'
   latitude     Float?
   longitude    Float?

@@ -11,6 +11,12 @@ const OrderTracking: React.FC = () => {
     if (state.trackingOrderId) {
       const order = state.orders.find(o => o.id === state.trackingOrderId);
       setCurrentOrder(order);
+      
+      if (!order) {
+        // Se o pedido não foi encontrado, tentar buscar no backend
+        console.log('Pedido não encontrado no estado local, buscando no backend...');
+        // Aqui você pode implementar uma busca específica no backend se necessário
+      }
     }
   }, [state.trackingOrderId, state.orders]);
 
@@ -120,14 +126,40 @@ const OrderTracking: React.FC = () => {
   if (!currentOrder) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Pedido não encontrado</h2>
+        <div className="flex items-center mb-6">
           <button
             onClick={handleBackToMenu}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            Voltar ao Cardápio
+            <ArrowLeft className="h-5 w-5" />
           </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Acompanhar Pedido</h1>
+            <p className="text-gray-600">Pedido #{state.trackingOrderId}</p>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          <div className="mb-6">
+            <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Pedido não encontrado</h2>
+            <p className="text-gray-600 mb-6">
+              O pedido #{state.trackingOrderId} não foi encontrado ou pode ter sido removido.
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            <button
+              onClick={handleBackToMenu}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              Voltar ao Cardápio
+            </button>
+            
+            <p className="text-sm text-gray-500">
+              Se você acredita que isso é um erro, entre em contato conosco.
+            </p>
+          </div>
         </div>
       </div>
     );
