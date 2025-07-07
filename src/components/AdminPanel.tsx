@@ -23,6 +23,8 @@ import { useApp } from '../contexts/AppContext';
 import PizzaManager from './PizzaManager';
 import BusinessHoursManager from './BusinessHoursManager';
 import PaymentSettings from './PaymentSettings';
+import BusinessInfoManager from './BusinessInfoManager';
+import UserManager from './UserManager';
 import AdditionalsManager from './AdditionalsManager';
 import { Order, OrderStatus } from '../types';
 
@@ -34,7 +36,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'settings'>('dashboard');
   const [menuSubTab, setMenuSubTab] = useState<'pizzas' | 'additionals'>('pizzas');
-  const [settingsSubTab, setSettingsSubTab] = useState<'hours' | 'payment'>('hours');
+  const [settingsSubTab, setSettingsSubTab] = useState<'business' | 'hours' | 'payment' | 'users'>('business');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
@@ -411,7 +413,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold text-gray-900">Configurações</h3>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSettingsSubTab('business')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              settingsSubTab === 'business'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Negócio
+          </button>
           <button
             onClick={() => setSettingsSubTab('hours')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -432,11 +444,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
           >
             Pagamento
           </button>
+          <button
+            onClick={() => setSettingsSubTab('users')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              settingsSubTab === 'users'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Usuários
+          </button>
         </div>
       </div>
 
+      {settingsSubTab === 'business' && <BusinessInfoManager />}
       {settingsSubTab === 'hours' && <BusinessHoursManager />}
       {settingsSubTab === 'payment' && <PaymentSettings />}
+      {settingsSubTab === 'users' && <UserManager />}
     </div>
   );
 

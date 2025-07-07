@@ -96,4 +96,56 @@ export interface BusinessSettings {
   isOpen: boolean;
   closedMessage: string;
   payment: PaymentSettings;
+  businessInfo: BusinessInfo;
+}
+
+export interface BusinessInfo {
+  name: string;
+  whatsapp: string;
+  instagram: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  permissions: UserPermissions;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type UserRole = 'admin' | 'manager' | 'operator' | 'delivery';
+
+export interface UserPermissions {
+  dashboard: boolean;
+  orders: {
+    view: boolean;
+    create: boolean;
+    update: boolean;
+    delete: boolean;
+    updateStatus: boolean;
+  };
+  menu: {
+    view: boolean;
+    create: boolean;
+    update: boolean;
+    delete: boolean;
+  };
+  settings: {
+    view: boolean;
+    update: boolean;
+    users: boolean;
+  };
+  delivery: {
+    view: boolean;
+    confirmPayment: boolean;
+    confirmDelivery: boolean;
+  };
 }

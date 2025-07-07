@@ -15,6 +15,10 @@ import {
   BusinessSettings,
   BusinessHours,
   PaymentSettings,
+  BusinessInfo,
+  User,
+  UserRole,
+  UserPermissions,
 } from "../types";
 import { pizzas as initialPizzas } from "../data/pizzas";
 import { additionals as initialAdditionals } from "../data/additionals";
@@ -34,6 +38,8 @@ interface AppState {
   isLoading: boolean;
   currentOrder: Order | null;
   showOrderTracking: boolean;
+  users: User[];
+  currentUser: User | null;
 }
 
 type AppAction =
@@ -66,13 +72,19 @@ type AppAction =
   | { type: "HIDE_BEVERAGE_SUGGESTIONS" }
   | { type: "UPDATE_BUSINESS_SETTINGS"; payload: Partial<BusinessSettings> }
   | { type: "UPDATE_PAYMENT_SETTINGS"; payload: PaymentSettings }
+  | { type: "UPDATE_BUSINESS_INFO"; payload: BusinessInfo }
   | { type: "LOAD_BUSINESS_SETTINGS"; payload: BusinessSettings }
   | { type: "SET_PIZZAS"; payload: Pizza[] }
   | { type: "SET_ADDITIONALS"; payload: Additional[] }
   | { type: "SET_ORDERS"; payload: Order[] }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_CURRENT_ORDER"; payload: Order | null }
-  | { type: "SHOW_ORDER_TRACKING"; payload: boolean };
+  | { type: "SHOW_ORDER_TRACKING"; payload: boolean }
+  | { type: "SET_USERS"; payload: User[] }
+  | { type: "ADD_USER"; payload: User }
+  | { type: "UPDATE_USER"; payload: User }
+  | { type: "DELETE_USER"; payload: string }
+  | { type: "SET_CURRENT_USER"; payload: User | null };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -94,12 +106,23 @@ export const defaultPaymentSettings: PaymentSettings = {
   acceptCard: false,
 };
 
+const defaultBusinessInfo: BusinessInfo = {
+  name: "Pizzaria a Quadrada",
+  whatsapp: "77999742491",
+  instagram: "@pizzariaquadrada",
+  address: "Rua das Pizzas, 123",
+  city: "Vitória da Conquista",
+  state: "BA",
+  zipCode: "45000-000",
+};
+
 const defaultBusinessSettings: BusinessSettings = {
   businessHours: defaultBusinessHours,
   isOpen: true,
   closedMessage:
     "Estamos fechados no momento. Nosso horário de funcionamento é das 18:00 às 23:00.",
   payment: defaultPaymentSettings,
+  businessInfo: defaultBusinessInfo,
 };
 
 // Função para carregar configurações do localStorage (fallback)
@@ -114,6 +137,10 @@ const loadBusinessSettings = (): BusinessSettings => {
         payment: {
           ...defaultPaymentSettings,
           ...parsed.payment,
+        },
+        businessInfo: {
+          ...defaultBusinessInfo,
+          ...parsed.businessInfo,
         },
       };
     }
@@ -148,6 +175,8 @@ const initialState: AppState = {
   isLoading: false,
   currentOrder: null,
   showOrderTracking: false,
+  users: [],
+  currentUser: null,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -169,6 +198,29 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
     case "SHOW_ORDER_TRACKING":
       return { ...state, showOrderTracking: action.payload };
+
+    case "SET_USERS":
+      return { ...state, users: action.payload };
+
+    case "ADD_USER":
+      return { ...state, users: [...state.users, action.payload] };
+
+    case "UPDATE_USER":
+      return {
+        ...state,
+        users: state.users.map((user) =>
+          user.id === action.payload.id ? action.payload : user
+        ),
+      };
+
+    case "DELETE_USER":
+      return {
+        ...state,
+        users: state.users.filter((user) => user.id !== action.payload),
+      };
+
+    case "SET_CURRENT_USER":
+      return { ...state, currentUser: action.payload };
 
     case "ADD_TO_CART":
       const existingItemIndex = state.cart.findIndex(
@@ -518,6 +570,26 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return {
         ...state,
         businessSettings: updatedBusinessSettings,
+      };
+
+    case "UPDATE_BUSINESS_INFO":
+      const updatedBusinessSettingsWithInfo = {
+        ...state.businessSettings,
+        businessInfo: action.payload,
+      };
+      // Salvar no localStorage como fallback
+      saveBusinessSettings(updatedBusinessSettingsWithInfo);
+
+      // Enviar para o backend
+      apiService
+        .updateBusinessSettings(updatedBusinessSettingsWithInfo)
+        .catch((error) => {
+          console.error("Erro ao salvar informações do negócio no backend:", error);
+        });
+
+      return {
+        ...state,
+        businessSettings: updatedBusinessSettingsWithInfo,
       };
 
     default:
