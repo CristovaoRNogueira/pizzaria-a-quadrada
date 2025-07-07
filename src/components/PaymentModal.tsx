@@ -15,6 +15,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
   const [pixCopied, setPixCopied] = useState(false);
   const [pixPaid, setPixPaid] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [pixPaymentStatus, setPixPaymentStatus] = useState<'pending' | 'checking' | 'confirmed' | 'failed'>('pending');
   const [cardData, setCardData] = useState({
     number: '',
     expiry: '',
@@ -40,29 +41,56 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
   };
 
   const handlePixPayment = () => {
+    setPixPaymentStatus('checking');
     setCheckingPayment(true);
     
-    // Simular verificação de pagamento PIX
+    dispatch({
+      type: 'ADD_NOTIFICATION',
+      payload: 'Verificando pagamento PIX...'
+    });
+    
+    // Simular verificação automática de pagamento PIX
     setTimeout(() => {
-      setPixPaid(true);
-      setCheckingPayment(false);
+      // Simular resposta da API de verificação PIX
+      const paymentConfirmed = Math.random() > 0.3; // 70% de chance de sucesso
       
-      setTimeout(() => {
-        onSuccess({
-          method: 'pix',
-          pixCode: generatePixCode(),
-          pixPaid: true,
-          pixTransactionId: `pix_${Date.now()}`
+      if (paymentConfirmed) {
+        setPixPaymentStatus('confirmed');
+        setPixPaid(true);
+        setCheckingPayment(false);
+        
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          payload: '✅ Pagamento PIX confirmado automaticamente!'
         });
-      }, 1000);
-    }, 3000);
+        
+        setTimeout(() => {
+          onSuccess({
+            method: 'pix',
+            pixCode: generatePixCode(),
+            pixPaid: true,
+            pixTransactionId: `pix_${Date.now()}`
+          });
+        }, 1500);
+      } else {
+        setPixPaymentStatus('failed');
+        setCheckingPayment(false);
+        
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          payload: '⚠️ Pagamento PIX não detectado. Tente novamente ou confirme manualmente.'
+        });
+      }
+    }, 4000); // Simular tempo de verificação
   };
 
   const handlePixConfirm = () => {
+    setPixPaymentStatus('confirmed');
     onSuccess({
       method: 'pix',
       pixCode: generatePixCode(),
-      pixPaid: false
+      pixPaid: true,
+      pixTransactionId: `pix_manual_${Date.now()}`
     });
   };
 

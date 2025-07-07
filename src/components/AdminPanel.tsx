@@ -33,9 +33,10 @@ import { Order, OrderStatus } from '../types';
 
 interface AdminPanelProps {
   onLogout: () => void;
+  userRole?: string | null;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'settings'>('dashboard');
   const [menuSubTab, setMenuSubTab] = useState<'pizzas' | 'additionals'>('pizzas');
@@ -249,6 +250,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     if (status === 'all') return state.orders.length;
     return state.orders.filter(order => order.status === status).length;
   };
+
+  // Verificar permissões do usuário
+  const hasPermission = (section: string, action?: string) => {
+    if (!state.currentUser || !state.currentUser.permissions) {
+      return userRole === 'admin'; // Fallback para admin
+    }
+    
+    const permissions = state.currentUser.permissions;
+    
+    switch (section) {
+      case 'dashboard':
+        return permissions.dashboard;
+      case 'orders':
+        if (!action) return permissions.orders.view;
+        return permissions.orders[action as keyof typeof permissions.orders];
+      case 'menu':
+        if (!action) return permissions.menu.view;
+        return permissions.menu[action as keyof typeof permissions.menu];
+      case 'settings':
+        if (!action) return permissions.settings.view;
+        return permissions.settings[action as keyof typeof permissions.settings];
+      case 'delivery':
+        if (!action) return permissions.delivery.view;
+        return permissions.delivery[action as keyof typeof permissions.delivery];
+      default:
+        return false;
+    }
+  };
+
+  // Definir aba inicial baseada nas permissões
+  useEffect(() => {
+    if (!hasPermission('dashboard') && hasPermission('orders')) {
+      setActiveTab('orders');
+    }
+  }, [state.currentUser]);
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -490,7 +526,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               </div>
 
               {/* Botão de Confirmar Pagamento */}
-              {order.payment.method === 'dinheiro' && !confirmedPayments.has(order.id) && (
+              {order.payment.method === 'dinheiro' && !confirmedPayments.has(order.id) && hasPermission('delivery', 'confirmPayment') && (
                 <button
                   onClick={() => handleConfirmPayment(order.id)}
                   className="w-full p-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors text-xs flex items-center justify-center mb-1"
@@ -501,7 +537,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               )}
 
               {/* Botão de Avançar Status */}
-              {getNextStatus(order.status) && (
+              {getNextStatus(order.status) && hasPermission('orders', 'updateStatus') && (
                 <button
                   onClick={() => handleAdvanceStatus(order.id, order.status)}
                   className="w-full p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-xs flex items-center justify-center"
@@ -654,76 +690,84 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
       <nav className="bg-white border-b sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'dashboard'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="h-4 w-4" />
-                <span>Dashboard</span>
-              </div>
-            </button>
+            {hasPermission('dashboard') && (
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'dashboard'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </div>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'orders'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <ShoppingBag className="h-4 w-4" />
-                <span>Pedidos</span>
-                {state.orders.filter(order => ['new', 'accepted'].includes(order.status)).length > 0 && (
-                  <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                    {state.orders.filter(order => ['new', 'accepted'].includes(order.status)).length}
-                  </span>
-                )}
-              </div>
-            </button>
+            {hasPermission('orders') && (
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'orders'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>Pedidos</span>
+                  {state.orders.filter(order => ['new', 'accepted'].includes(order.status)).length > 0 && (
+                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                      {state.orders.filter(order => ['new', 'accepted'].includes(order.status)).length}
+                    </span>
+                  )}
+                </div>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('menu')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'menu'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Pizza className="h-4 w-4" />
-                <span>Cardápio</span>
-              </div>
-            </button>
+            {hasPermission('menu') && (
+              <button
+                onClick={() => setActiveTab('menu')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'menu'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Pizza className="h-4 w-4" />
+                  <span>Cardápio</span>
+                </div>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'settings'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Settings className="h-4 w-4" />
-                <span>Configurações</span>
-              </div>
-            </button>
+            {hasPermission('settings') && (
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'settings'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Settings className="h-4 w-4" />
+                  <span>Configurações</span>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'orders' && renderOrders()}
-        {activeTab === 'menu' && renderMenu()}
-        {activeTab === 'settings' && renderSettings()}
+        {activeTab === 'dashboard' && hasPermission('dashboard') && renderDashboard()}
+        {activeTab === 'orders' && hasPermission('orders') && renderOrders()}
+        {activeTab === 'menu' && hasPermission('menu') && renderMenu()}
+        {activeTab === 'settings' && hasPermission('settings') && renderSettings()}
       </main>
 
       {/* Order Details Modal */}

@@ -83,9 +83,22 @@ const Cart: React.FC = () => {
   };
 
   const getCurrentLocation = () => {
+    console.log('🗺️ Solicitando localização do usuário...');
+    
     if (navigator.geolocation) {
+      dispatch({
+        type: 'ADD_NOTIFICATION',
+        payload: 'Solicitando sua localização...'
+      });
+      
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('✅ Localização obtida:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+          
           setCustomer({
             ...customer,
             location: {
@@ -95,21 +108,43 @@ const Cart: React.FC = () => {
           });
           dispatch({
             type: "ADD_NOTIFICATION",
-            payload: "Localização capturada com sucesso!",
+            payload: `Localização capturada! Precisão: ${Math.round(position.coords.accuracy)}m`
           });
         },
         (error) => {
-          console.error("Erro ao obter localização:", error);
+          console.error('❌ Erro ao obter localização:', error);
+          let errorMessage = 'Erro ao obter localização. ';
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += 'Permissão negada pelo usuário.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += 'Localização indisponível.';
+              break;
+            case error.TIMEOUT:
+              errorMessage += 'Tempo limite excedido.';
+              break;
+            default:
+              errorMessage += 'Erro desconhecido.';
+          }
+          
           dispatch({
             type: "ADD_NOTIFICATION",
-            payload: "Erro ao obter localização. Verifique as permissões.",
+            payload: errorMessage
           });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutos
         }
       );
     } else {
+      console.error('❌ Geolocalização não suportada');
       dispatch({
         type: "ADD_NOTIFICATION",
-        payload: "Geolocalização não suportada pelo navegador.",
+        payload: 'Geolocalização não é suportada por este navegador.'
       });
     }
   };

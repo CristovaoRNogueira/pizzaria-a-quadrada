@@ -40,6 +40,8 @@ interface AppState {
   showOrderTracking: boolean;
   users: User[];
   currentUser: User | null;
+  userPermissions: UserPermissions | null;
+  userPermissions: UserPermissions | null;
 }
 
 type AppAction =
@@ -178,6 +180,7 @@ const initialState: AppState = {
   showOrderTracking: false,
   users: [],
   currentUser: null,
+  userPermissions: null,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
