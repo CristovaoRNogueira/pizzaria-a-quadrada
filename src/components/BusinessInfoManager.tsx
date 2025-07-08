@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react"; 
 import { Save, Building2, Phone, Instagram, MapPin } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { BusinessInfo } from '../types';
 
 const BusinessInfoManager: React.FC = () => {
   const { state, dispatch } = useApp();
-  const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(
-    state.businessSettings.businessInfo
-  );
+
+const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(
+  state.businessSettings?.businessInfo ?? {
+    name: '',
+    whatsapp: '',
+    instagram: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
+  }
+);
+
+useEffect(() => {
+  if (state.businessSettings?.businessInfo) {
+    setBusinessInfo(state.businessSettings.businessInfo);
+  }
+}, [state.businessSettings?.businessInfo]);
 
   const handleSave = () => {
     dispatch({

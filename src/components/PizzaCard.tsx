@@ -125,34 +125,38 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
             </div>
           )}
 
-          {/* Size Selection for non-beverages */}
-          {pizza.category !== 'bebida' && (
-            <div className="mb-3">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Tamanho:
-              </label>
-              <select
-                value={selectedSize}
-                onChange={(e) => setSelectedSize(e.target.value as any)}
-                className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                {pizza.sizes.small && (
-                  <option value="small">
-                    {getSizeLabel('small')} - R$ {pizza.sizes.small.toFixed(2)}
-                  </option>
-                )}
-                <option value="medium">
-                  {getSizeLabel('medium')} - R$ {pizza.sizes.medium.toFixed(2)}
-                </option>
-                <option value="large">
-                  {getSizeLabel('large')} - R$ {pizza.sizes.large.toFixed(2)}
-                </option>
-                <option value="family">
-                  {getSizeLabel('family')} - R$ {pizza.sizes.family.toFixed(2)}
-                </option>
-              </select>
-            </div>
-          )}
+{/* Size Selection for non-beverages */}
+{pizza.category !== 'bebida' && (
+  <div className="mb-3">
+    <label className="block text-xs font-medium text-gray-700 mb-1">
+      Tamanho:
+    </label>
+    <div className="flex gap-1 flex-wrap">
+      {(['small', 'medium', 'large', 'family'] as const).map((sizeKey) => {
+        const price = pizza.sizes[sizeKey];
+        if (!price) return null;
+
+        return (
+          <button
+            key={sizeKey}
+            type="button"
+            onClick={() => setSelectedSize(sizeKey)}
+            className={`w-8 h-8 text-sm flex items-center justify-center rounded-lg border font-semibold ${
+              selectedSize === sizeKey
+                ? 'bg-red-500 text-white border-red-500'
+                : 'border-red-300 text-gray-700 hover:bg-red-100'
+            }`}
+            title={getSizeLabel(sizeKey)}
+          >
+            {getSizeLabel(sizeKey)[0]}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
+
+
 
           {/* Price and Add Button */}
           <div className="flex items-center justify-between">
@@ -178,7 +182,7 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
             >
               <ShoppingCart className="h-4 w-4" />
               <span className="text-sm">
-                {pizza.category === 'bebida' ? 'Adicionar' : 'Personalizar'}
+                {pizza.category === 'bebida' ? 'Adicionar' : 'Adicionar'}
               </span>
             </button>
           </div>
