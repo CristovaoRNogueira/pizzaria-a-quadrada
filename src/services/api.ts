@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar token de autenticação
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token');
   if (token) {
@@ -18,7 +17,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor para tratar erros de autenticação
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,13 +30,11 @@ api.interceptors.response.use(
 );
 
 export const apiService = {
-  // Autenticação
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password });
     return response.data;
   },
 
-  // Pizzas
   getPizzas: async () => {
     const response = await api.get('/pizzas');
     return response.data;
@@ -59,7 +55,26 @@ export const apiService = {
     return response.data;
   },
 
-  // Pedidos
+  getAdditionals: async () => {
+    const response = await api.get('/additionals');
+    return response.data;
+  },
+
+  createAdditional: async (additionalData: any) => {
+    const response = await api.post('/additionals', additionalData);
+    return response.data;
+  },
+
+  updateAdditional: async (id: string, additionalData: any) => {
+    const response = await api.put(`/additionals/${id}`, additionalData);
+    return response.data;
+  },
+
+  deleteAdditional: async (id: string) => {
+    const response = await api.delete(`/additionals/${id}`);
+    return response.data;
+  },
+
   getOrders: async () => {
     const response = await api.get('/orders');
     return response.data;
@@ -75,7 +90,11 @@ export const apiService = {
     return response.data;
   },
 
-  // Configurações de negócio
+  deleteOrder: async (id: string) => {
+    const response = await api.delete(`/orders/${id}`);
+    return response.data;
+  },
+
   getBusinessSettings: async () => {
     const response = await api.get('/business-settings');
     return response.data;
@@ -86,7 +105,6 @@ export const apiService = {
     return response.data;
   },
 
-  // Health check
   healthCheck: async () => {
     const response = await api.get('/health');
     return response.data;

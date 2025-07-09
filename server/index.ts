@@ -5,14 +5,12 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares
 app.use(
   cors({
     origin: ["http://localhost:5173", "http://localhost:3000"],
@@ -21,7 +19,6 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 
-// Middleware de log para debug
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -30,7 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware de autenticação
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -46,7 +42,6 @@ const authenticateToken = (req: any, res: any, next: any) => {
   });
 };
 
-// Rotas de autenticação
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -81,6 +76,7 @@ app.post("/api/auth/login", async (req, res) => {
         id: admin.id,
         email: admin.email,
         name: admin.name,
+        role: 'admin'
       },
     });
   } catch (error) {
@@ -89,7 +85,6 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// Rotas de pizzas
 app.get("/api/pizzas", async (req, res) => {
   try {
     console.log("Buscando pizzas...");
@@ -100,7 +95,6 @@ app.get("/api/pizzas", async (req, res) => {
 
     console.log(`Encontradas ${pizzas.length} pizzas`);
 
-    // Converter para o formato esperado pelo frontend
     const formattedPizzas = pizzas.map((pizza) => ({
       id: pizza.id,
       name: pizza.name,
@@ -153,7 +147,23 @@ app.post("/api/pizzas", authenticateToken, async (req, res) => {
 
     console.log("Pizza criada no banco:", pizza);
 
-    res.json(pizza);
+    const formattedPizza = {
+      id: pizza.id,
+      name: pizza.name,
+      description: pizza.description,
+      price: pizza.priceMedium,
+      image: pizza.image,
+      category: pizza.category,
+      ingredients: pizza.ingredients,
+      sizes: {
+        ...(pizza.priceSmall && { small: pizza.priceSmall }),
+        medium: pizza.priceMedium,
+        large: pizza.priceLarge,
+        family: pizza.priceFamily,
+      },
+    };
+
+    res.json(formattedPizza);
   } catch (error) {
     console.error("Erro ao criar pizza:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
@@ -192,7 +202,23 @@ app.put("/api/pizzas/:id", authenticateToken, async (req, res) => {
 
     console.log("Pizza atualizada no banco:", pizza);
 
-    res.json(pizza);
+    const formattedPizza = {
+      id: pizza.id,
+      name: pizza.name,
+      description: pizza.description,
+      price: pizza.priceMedium,
+      image: pizza.image,
+      category: pizza.category,
+      ingredients: pizza.ingredients,
+      sizes: {
+        ...(pizza.priceSmall && { small: pizza.priceSmall }),
+        medium: pizza.priceMedium,
+        large: pizza.priceLarge,
+        family: pizza.priceFamily,
+      },
+    };
+
+    res.json(formattedPizza);
   } catch (error) {
     console.error("Erro ao atualizar pizza:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
@@ -219,7 +245,102 @@ app.delete("/api/pizzas/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// Rotas de pedidos
+app.get("/api/additionals", async (req, res) => {
+  try {
+    console.log("Buscando adicionais...");
+    const additionals = await prisma.additional.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+    });
+
+    console.log(`Encontrados ${additionals.length} adicionais`);
+    res.json(additionals);
+  } catch (error) {
+    console.error("Erro ao buscar adicionais:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.post("/api/additionals", authenticateToken, async (req, res) => {
+  try {
+    const { name, description, price, category } = req.body;
+
+    console.log("Dados recebidos para criar adicional:", {
+      name,
+      description,
+      price,
+      category,
+    });
+
+    const additional = await prisma.additional.create({
+      data: {
+        name,
+        description,
+        price,
+        category,
+      },
+    });
+
+    console.log("Adicional criado no banco:", additional);
+    res.json(additional);
+  } catch (error) {
+    console.error("Erro ao criar adicional:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.put("/api/additionals/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, category, isActive } = req.body;
+
+    console.log("Dados recebidos para atualizar adicional:", {
+      id,
+      name,
+      description,
+      price,
+      category,
+      isActive,
+    });
+
+    const additional = await prisma.additional.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        price,
+        category,
+        isActive,
+      },
+    });
+
+    console.log("Adicional atualizado no banco:", additional);
+    res.json(additional);
+  } catch (error) {
+    console.error("Erro ao atualizar adicional:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.delete("/api/additionals/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Removendo adicional:", id);
+
+    await prisma.additional.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    console.log("Adicional removido com sucesso");
+    res.json({ message: "Adicional removido com sucesso" });
+  } catch (error) {
+    console.error("Erro ao remover adicional:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
 app.get("/api/orders", authenticateToken, async (req, res) => {
   try {
     console.log("Buscando pedidos...");
@@ -237,7 +358,6 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
 
     console.log(`Encontrados ${orders.length} pedidos`);
 
-    // Converter para o formato esperado pelo frontend
     const formattedOrders = orders.map((order) => ({
       id: order.id,
       customer: {
@@ -264,10 +384,15 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
         ingredients: item.pizza.ingredients,
         quantity: item.quantity,
         selectedSize: item.selectedSize,
-        selectedFlavors: item.selectedFlavors.map((flavorId) => {
-          // Aqui você pode buscar os detalhes dos sabores se necessário
-          return { id: flavorId, name: "Sabor" };
-        }),
+        selectedFlavors: item.selectedFlavors.map((flavorId) => ({
+          id: flavorId,
+          name: "Sabor"
+        })),
+        selectedAdditionals: item.selectedAdditionals.map((additionalId) => ({
+          id: additionalId,
+          name: "Adicional"
+        })),
+        notes: item.notes,
         price: item.unitPrice,
       })),
       total: order.total,
@@ -299,7 +424,6 @@ app.post("/api/orders", async (req, res) => {
     console.log("Total:", total);
     console.log("Payment:", JSON.stringify(payment, null, 2));
 
-    // Validar dados obrigatórios
     if (!customer || !customer.name || !customer.phone) {
       console.log("❌ Dados do cliente inválidos");
       return res
@@ -330,7 +454,6 @@ app.post("/api/orders", async (req, res) => {
 
     console.log("✅ Validação dos dados concluída");
 
-    // Criar ou encontrar cliente
     console.log("🔍 Buscando/criando cliente...");
     const customerData = await prisma.customer.upsert({
       where: { phone: customer.phone },
@@ -357,7 +480,6 @@ app.post("/api/orders", async (req, res) => {
 
     console.log("✅ Cliente criado/atualizado:", customerData.id);
 
-    // Preparar itens do pedido
     console.log("📦 Preparando itens do pedido...");
     const orderItemsData = items.map((item: any) => {
       console.log("Processando item:", item.name);
@@ -365,9 +487,9 @@ app.post("/api/orders", async (req, res) => {
         pizzaId: item.id,
         quantity: item.quantity,
         selectedSize: item.selectedSize,
-        selectedFlavors: item.selectedFlavors?.map((f: any) => f.id) || [
-          item.id,
-        ],
+        selectedFlavors: item.selectedFlavors?.map((f: any) => f.id) || [item.id],
+        selectedAdditionals: item.selectedAdditionals?.map((a: any) => a.id) || [],
+        notes: item.notes || "",
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
       };
@@ -375,7 +497,6 @@ app.post("/api/orders", async (req, res) => {
 
     console.log("✅ Itens preparados:", orderItemsData.length);
 
-    // Criar pedido
     console.log("🛒 Criando pedido no banco de dados...");
     const order = await prisma.order.create({
       data: {
@@ -444,7 +565,24 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
   }
 });
 
-// Rotas de configurações de negócio
+app.delete("/api/orders/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Removendo pedido:", id);
+
+    await prisma.order.delete({
+      where: { id },
+    });
+
+    console.log("Pedido removido com sucesso");
+    res.json({ message: "Pedido removido com sucesso" });
+  } catch (error) {
+    console.error("Erro ao remover pedido:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
 app.get("/api/business-settings", async (req, res) => {
   try {
     console.log("Buscando configurações de negócio...");
@@ -455,7 +593,6 @@ app.get("/api/business-settings", async (req, res) => {
 
     if (!settings) {
       console.log("Configurações não encontradas, criando padrão...");
-      // Criar configurações padrão se não existirem
       const defaultSettings = await prisma.businessSettings.create({
         data: {
           id: "default",
@@ -524,10 +661,6 @@ app.get("/api/business-settings", async (req, res) => {
           day: hour.day,
           isOpen: hour.isOpen,
           openTime: hour.openTime,
-          selectedAdditionals: item.selectedAdditionals || [],
-          notes: item.notes || "",
-          selectedAdditionals: item.selectedAdditionals || [],
-          notes: item.notes || "",
           closeTime: hour.closeTime,
         })),
         payment: {
@@ -538,6 +671,15 @@ app.get("/api/business-settings", async (req, res) => {
           acceptCash: defaultSettings.acceptCash,
           acceptPix: defaultSettings.acceptPix,
           acceptCard: defaultSettings.acceptCard,
+        },
+        businessInfo: {
+          name: "Pizzaria a Quadrada",
+          whatsapp: "77999742491",
+          instagram: "@pizzariaquadrada",
+          address: "Rua das Pizzas, 123",
+          city: "Vitória da Conquista",
+          state: "BA",
+          zipCode: "45000-000",
         },
       };
 
@@ -562,6 +704,15 @@ app.get("/api/business-settings", async (req, res) => {
         acceptPix: settings.acceptPix,
         acceptCard: settings.acceptCard,
       },
+      businessInfo: {
+        name: "Pizzaria a Quadrada",
+        whatsapp: "77999742491",
+        instagram: "@pizzariaquadrada",
+        address: "Rua das Pizzas, 123",
+        city: "Vitória da Conquista",
+        state: "BA",
+        zipCode: "45000-000",
+      },
     };
 
     res.json(formattedSettings);
@@ -573,16 +724,16 @@ app.get("/api/business-settings", async (req, res) => {
 
 app.put("/api/business-settings", authenticateToken, async (req, res) => {
   try {
-    const { isOpen, closedMessage, businessHours, payment } = req.body;
+    const { isOpen, closedMessage, businessHours, payment, businessInfo } = req.body;
 
     console.log("Dados recebidos para atualizar configurações:", {
       isOpen,
       closedMessage,
       businessHours,
       payment,
+      businessInfo,
     });
 
-    // Atualizar configurações principais
     const settings = await prisma.businessSettings.upsert({
       where: { id: "default" },
       update: {
@@ -613,7 +764,6 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
 
     console.log("Configurações principais atualizadas:", settings);
 
-    // Atualizar horários de funcionamento se fornecidos
     if (businessHours) {
       for (const hour of businessHours) {
         await prisma.businessHours.upsert({
@@ -647,12 +797,10 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
   }
 });
 
-// Rota de health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// Middleware de tratamento de erros
 app.use((error: any, req: any, res: any, next: any) => {
   console.error("Erro não tratado:", error);
   res.status(500).json({
@@ -661,7 +809,6 @@ app.use((error: any, req: any, res: any, next: any) => {
   });
 });
 
-// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📊 API disponível em http://localhost:${PORT}/api`);
@@ -670,14 +817,12 @@ app.listen(PORT, () => {
   );
 });
 
-// Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("🛑 Encerrando servidor...");
   await prisma.$disconnect();
   process.exit(0);
 });
 
-// Tratamento de erros não capturados
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });

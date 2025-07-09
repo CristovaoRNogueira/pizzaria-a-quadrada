@@ -105,41 +105,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    // Enviar para o backend
-    fetch(`/api/orders/${orderId}/status`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-      },
-      body: JSON.stringify({ status: newStatus.toUpperCase() })
-    })
-    .then(response => response.json())
-    .then(updatedOrder => {
-      console.log('Status atualizado no backend:', updatedOrder);
-      // Atualizar no estado local
-      dispatch({
-        type: 'UPDATE_ORDER_STATUS',
-        payload: { id: orderId, status: newStatus }
+    apiService.updateOrderStatus(orderId, newStatus.toUpperCase())
+      .then(() => {
+        dispatch({
+          type: 'UPDATE_ORDER_STATUS',
+          payload: { id: orderId, status: newStatus }
+        });
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          payload: `Status do pedido atualizado para ${getStatusLabel(newStatus)}`
+        });
+      })
+      .catch(error => {
+        console.error('Erro ao atualizar status:', error);
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          payload: 'Erro ao atualizar status do pedido'
+        });
       });
-      dispatch({
-        type: 'ADD_NOTIFICATION',
-        payload: `Status do pedido atualizado para ${getStatusLabel(newStatus)}`
-      });
-    })
-    .catch(error => {
-      console.error('Erro ao atualizar status:', error);
-      dispatch({
-        type: 'ADD_NOTIFICATION',
-        payload: 'Erro ao atualizar status do pedido'
-      });
-    });
   };
 
   const handleAdvanceStatus = (orderId: string, currentStatus: OrderStatus) => {
     const nextStatus = getNextStatus(currentStatus);
     if (nextStatus) {
-      handleStatusChange(orderId, nextStatus);
+      // Atualizar no backend
+      apiService.updateOrderStatus(orderId, nextStatus.toUpperCase())
+        .then(() => {
+          dispatch({
+            type: 'UPDATE_ORDER_STATUS',
+            payload: { id: orderId, status: nextStatus }
+          });
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            payload: `Status do pedido atualizado para ${getStatusLabel(nextStatus)}`
+          });
+        })
+        .catch(error => {
+          console.error('Erro ao atualizar status:', error);
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            payload: 'Erro ao atualizar status do pedido'
+          });
+        });
     }
   };
 
@@ -153,29 +160,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
 
   const handleDeleteOrder = (orderId: string) => {
     if (confirm('Tem certeza que deseja excluir este pedido?')) {
-      fetch(`/api/orders/${orderId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        }
-      })
-      .then(() => {
-        dispatch({
-          type: 'REMOVE_ORDER',
-          payload: orderId
+      apiService.deleteOrder(orderId)
+        .then(() => {
+          dispatch({
+            type: 'REMOVE_ORDER',
+            payload: orderId
+          });
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            payload: 'Pedido excluído com sucesso!'
+          });
+        })
+        .catch(error => {
+          console.error('Erro ao excluir pedido:', error);
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            payload: 'Erro ao excluir pedido'
+          });
         });
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          payload: 'Pedido excluído com sucesso!'
-        });
-      })
-      .catch(error => {
-        console.error('Erro ao excluir pedido:', error);
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          payload: 'Erro ao excluir pedido'
-        });
-      });
     }
   };
 
