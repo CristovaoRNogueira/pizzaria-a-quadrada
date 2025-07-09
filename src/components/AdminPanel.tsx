@@ -23,6 +23,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import { apiService } from '../services/api';
 import PizzaManager from './PizzaManager';
 import BusinessHoursManager from './BusinessHoursManager';
 import PaymentSettings from './PaymentSettings';
