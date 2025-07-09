@@ -255,7 +255,7 @@ export const pizzaSizeConfig = {
   },
   redonda: {
     small: { name: 'Pequena', slices: 4, maxFlavors: 1, price: 35.00 },
-    medium: { name: 'Média', slices: 6, maxFlavors: 2, price: 45.00 },
+    medium: { name: 'Média', slices: 6, maxFlavors: 3, price: 45.00 },
     large: { name: 'Grande', slices: 8, maxFlavors: 3, price: 55.00 },
     family: { name: 'Família', slices: 12, maxFlavors: 3, price: 65.00 }
   }

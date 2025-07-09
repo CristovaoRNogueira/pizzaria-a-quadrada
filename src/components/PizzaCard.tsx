@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, ShoppingCart, Star } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Pizza, Additional } from '../types';
-import AdditionalsModal from './AdditionalsModal';
+import FlavorSelectionModal from './FlavorSelectionModal';
 
 interface PizzaCardProps {
   pizza: Pizza;
@@ -12,7 +12,7 @@ interface PizzaCardProps {
 const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
   const { dispatch } = useApp();
   const [selectedSize, setSelectedSize] = useState<'small' | 'medium' | 'large' | 'family'>('medium');
-  const [showAdditionals, setShowAdditionals] = useState(false);
+  const [showFlavorSelection, setShowFlavorSelection] = useState(false);
 
   const getSizeLabel = (size: string) => {
     const labels = {
@@ -34,7 +34,7 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
     }
   };
 
-  const handleAddToCart = (additionals: Additional[] = [], notes: string = '') => {
+  const handleAddToCart = (selectedFlavors: Pizza[] = [pizza], additionals: Additional[] = [], notes: string = '') => {
     if (!businessOpen) {
       dispatch({
         type: 'ADD_NOTIFICATION',
@@ -47,7 +47,7 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
       ...pizza,
       quantity: 1,
       selectedSize,
-      selectedFlavors: [pizza],
+      selectedFlavors: selectedFlavors,
       selectedAdditionals: additionals,
       notes,
       price: getSizePrice(selectedSize)
@@ -63,14 +63,14 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
       payload: `${pizza.name} adicionada ao carrinho!`
     });
 
-    setShowAdditionals(false);
+    setShowFlavorSelection(false);
   };
 
   const handleQuickAdd = () => {
     if (pizza.category === 'bebida') {
       handleAddToCart();
     } else {
-      setShowAdditionals(true);
+      setShowFlavorSelection(true);
     }
   };
 
@@ -195,16 +195,13 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, businessOpen }) => {
         </div>
       </div>
 
-      {/* Additionals Modal */}
-      {showAdditionals && (
-        <AdditionalsModal
-          item={{
-            ...pizza,
-            selectedSize,
-            price: getSizePrice(selectedSize)
-          }}
-          onClose={() => setShowAdditionals(false)}
-          onSave={handleAddToCart}
+      {/* Flavor Selection Modal */}
+      {showFlavorSelection && (
+        <FlavorSelectionModal
+          pizza={pizza}
+          selectedSize={selectedSize}
+          onClose={() => setShowFlavorSelection(false)}
+          onConfirm={handleAddToCart}
         />
       )}
     </>

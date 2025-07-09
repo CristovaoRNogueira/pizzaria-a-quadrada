@@ -724,6 +724,16 @@ const Cart: React.FC = () => {
                     {item.selectedFlavors.map((f) => f.name).join(", ")}
                   </p>
                 )}
+                {item.selectedAdditionals && item.selectedAdditionals.length > 0 && (
+                  <p className="text-sm text-gray-600">
+                    Adicionais: {item.selectedAdditionals.map((add) => add.name).join(", ")}
+                  </p>
+                )}
+                {item.notes && (
+                  <p className="text-sm text-gray-600 italic">
+                    Obs: {item.notes}
+                  </p>
+                )}
                 <p className="text-lg font-bold text-red-600">
                   R$ {item.price.toFixed(2)}
                 </p>
