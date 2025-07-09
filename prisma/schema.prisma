@@ -11,7 +11,7 @@ datasource db {
 }
 
 model Pizza {
-  id          String   @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   name        String
   description String
   image       String
@@ -32,7 +32,7 @@ model Pizza {
 }
 
 model Customer {
-  id           String   @id @default(cuid())
+  id           Int      @id @default(autoincrement())
   name         String
   phone        String   @unique
   address      String?
@@ -51,8 +51,8 @@ model Customer {
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  customerId String
+  id         Int         @id @default(autoincrement())
+  customerId Int
   total      Float
   status     OrderStatus @default(NEW)
   notes      String?
@@ -74,16 +74,16 @@ model Order {
 }
 
 model OrderItem {
-  id              String   @id @default(cuid())
-  orderId         String
-  pizzaId         String
-  quantity        Int
-  selectedSize    String // 'small' | 'medium' | 'large' | 'family'
-  selectedFlavors String[] // Array de IDs dos sabores selecionados
+  id                  Int      @id @default(autoincrement())
+  orderId             Int
+  pizzaId             Int
+  quantity            Int
+  selectedSize        String // 'small' | 'medium' | 'large' | 'family'
+  selectedFlavors     String[] // Array de IDs dos sabores selecionados
   selectedAdditionals String[] // Array de IDs dos adicionais selecionados
-  notes           String?  // Observações do cliente
-  unitPrice       Float
-  totalPrice      Float
+  notes               String?  // Observações do cliente
+  unitPrice           Float
+  totalPrice          Float
 
   // Relacionamentos
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -93,7 +93,7 @@ model OrderItem {
 }
 
 model Additional {
-  id          String   @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   name        String
   description String
   price       Float
@@ -129,7 +129,7 @@ model BusinessSettings {
 }
 
 model BusinessHours {
-  id                 String  @id @default(cuid())
+  id                 Int     @id @default(autoincrement())
   businessSettingsId String  @default("default")
   day                String // 'Domingo', 'Segunda-feira', etc.
   isOpen             Boolean @default(true)
@@ -144,7 +144,7 @@ model BusinessHours {
 }
 
 model Admin {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String // Hash da senha
   name      String
