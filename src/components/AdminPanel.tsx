@@ -180,33 +180,263 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   const handlePrintOrder = (order: Order) => {
-    // Simulate printing
-    const printContent = `
-      PIZZARIA A QUADRADA
-      Pedido #${order.id.slice(-8)}
-      
-      Cliente: ${order.customer.name}
-      Telefone: ${order.customer.phone}
-      ${order.customer.deliveryType === 'delivery' ? 
-        `Endereço: ${order.customer.address}, ${order.customer.neighborhood}` : 
-        'RETIRADA NO LOCAL'
-      }
-      
-      ITENS:
-      ${order.items.map(item => 
-        `${item.quantity}x ${item.name} (${item.selectedSize})`
-      ).join('\n')}
-      
-      TOTAL: R$ ${order.total.toFixed(2)}
-      
-      Pagamento: ${order.payment.method}
-    `;
+    // Criar conteúdo HTML para impressão
+    const printContent = generatePrintHTML(order);
     
-    console.log('Printing order:', printContent);
+    // Criar nova janela para impressão
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      // Aguardar carregamento e imprimir
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+        
+        // Fechar janela após impressão (opcional)
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      };
+    }
+    
     dispatch({
       type: 'ADD_NOTIFICATION',
       payload: 'Pedido enviado para impressão!'
     });
+  };
+
+  // Função para gerar HTML de impressão
+  const generatePrintHTML = (order: Order) => {
+    const formatTime = (date: Date) => {
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date(date));
+    };
+
+    const getPaymentMethodLabel = (method: string) => {
+      switch (method) {
+        case 'dinheiro': return 'Dinheiro';
+        case 'pix': return 'PIX';
+        case 'cartao': return 'Cartão de Crédito';
+        default: return method;
+      }
+    };
+
+    const getSizeLabel = (size: string) => {
+      const labels = {
+        small: 'Pequena',
+        medium: 'Média',
+        large: 'Grande',
+        family: 'Família'
+      };
+      return labels[size as keyof typeof labels] || size;
+    };
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Pedido #${order.id.slice(-8)} - Pizzaria a Quadrada</title>
+        <style>
+          @media print {
+            @page {
+              margin: 0.5in;
+              size: A4;
+            }
+            body {
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+            }
+          }
+          
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            margin: 0;
+            padding: 20px;
+            background: white;
+            color: black;
+          }
+          
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+          }
+          
+          .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+          }
+          
+          .header p {
+            margin: 0;
+            font-size: 10px;
+          }
+          
+          .order-info {
+            margin-bottom: 15px;
+          }
+          
+          .order-info h2 {
+            font-size: 14px;
+            margin: 0 0 8px 0;
+            text-decoration: underline;
+          }
+          
+          .customer-info, .payment-info {
+            margin-bottom: 15px;
+          }
+          
+          .customer-info h3, .payment-info h3 {
+            font-size: 12px;
+            margin: 0 0 5px 0;
+            font-weight: bold;
+          }
+          
+          .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+          }
+          
+          .items-table th,
+          .items-table td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: left;
+            font-size: 11px;
+          }
+          
+          .items-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+          }
+          
+          .total-section {
+            border-top: 2px solid #000;
+            padding-top: 10px;
+            text-align: right;
+          }
+          
+          .total-section .total {
+            font-size: 14px;
+            font-weight: bold;
+          }
+          
+          .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+          }
+          
+          .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border: 1px solid #000;
+            font-size: 10px;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>PIZZARIA A QUADRADA</h1>
+          <p>A qualidade é nossa diferença!</p>
+          <p>Telefone: (77) 99974-2491</p>
+        </div>
+        
+        <div class="order-info">
+          <h2>PEDIDO #${order.id.slice(-8)}</h2>
+          <p><strong>Data/Hora:</strong> ${formatTime(order.createdAt)}</p>
+          <p><strong>Status:</strong> <span class="status-badge">${getStatusLabel(order.status).toUpperCase()}</span></p>
+        </div>
+        
+        <div class="customer-info">
+          <h3>DADOS DO CLIENTE:</h3>
+          <p><strong>Nome:</strong> ${order.customer.name}</p>
+          <p><strong>Telefone:</strong> ${order.customer.phone}</p>
+          <p><strong>Tipo:</strong> ${order.customer.deliveryType === 'delivery' ? 'ENTREGA' : 'RETIRADA'}</p>
+          ${order.customer.deliveryType === 'delivery' ? `
+            <p><strong>Endereço:</strong> ${order.customer.address}</p>
+            <p><strong>Bairro:</strong> ${order.customer.neighborhood}</p>
+            ${order.customer.reference ? `<p><strong>Referência:</strong> ${order.customer.reference}</p>` : ''}
+          ` : `
+            <p><strong>Endereço para Retirada:</strong></p>
+            <p>Rua das Pizzas, 123 - Centro</p>
+            <p>Vitória da Conquista - BA</p>
+          `}
+        </div>
+        
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>QTD</th>
+              <th>ITEM</th>
+              <th>TAMANHO</th>
+              <th>VALOR UNIT.</th>
+              <th>TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map(item => `
+              <tr>
+                <td>${item.quantity}</td>
+                <td>
+                  ${item.name}
+                  ${item.selectedFlavors && item.selectedFlavors.length > 1 ? `
+                    <br><small>Sabores: ${item.selectedFlavors.map(f => f.name).join(', ')}</small>
+                  ` : ''}
+                  ${item.selectedAdditionals && item.selectedAdditionals.length > 0 ? `
+                    <br><small>Adicionais: ${item.selectedAdditionals.map(add => add.name).join(', ')}</small>
+                  ` : ''}
+                  ${item.notes ? `<br><small>Obs: ${item.notes}</small>` : ''}
+                </td>
+                <td>${getSizeLabel(item.selectedSize)}</td>
+                <td>R$ ${item.price.toFixed(2)}</td>
+                <td>R$ ${(item.price * item.quantity).toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <div class="payment-info">
+          <h3>PAGAMENTO:</h3>
+          <p><strong>Método:</strong> ${getPaymentMethodLabel(order.payment.method)}</p>
+          ${order.payment.method === 'dinheiro' && order.payment.needsChange ? `
+            <p><strong>Troco para:</strong> R$ ${order.payment.changeAmount?.toFixed(2)}</p>
+            <p><strong>Troco:</strong> R$ ${(order.payment.changeAmount! - order.total).toFixed(2)}</p>
+          ` : ''}
+          ${order.payment.method === 'pix' ? `
+            <p><strong>Status PIX:</strong> ${order.payment.pixPaid ? 'PAGO' : 'PENDENTE'}</p>
+          ` : ''}
+        </div>
+        
+        <div class="total-section">
+          <p class="total">TOTAL: R$ ${order.total.toFixed(2)}</p>
+        </div>
+        
+        <div class="footer">
+          <p>Obrigado pela preferência!</p>
+          <p>Pizzaria a Quadrada - A qualidade é nossa diferença!</p>
+          <p>Impresso em: ${formatTime(new Date())}</p>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   const handleWhatsAppContact = (order: Order) => {
