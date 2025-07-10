@@ -3,7 +3,7 @@ import { Pizza } from '../types';
 export const pizzas: Pizza[] = [
   // Pizzas Quadradas
   {
-    id: '1',
+    id: 1,
     name: 'Margherita',
     description: 'Molho de tomate, mussarela, manjericão fresco e azeite',
     price: 35.00,
@@ -18,7 +18,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '2',
+    id: 2,
     name: 'Pepperoni',
     description: 'Molho de tomate, mussarela e fatias de pepperoni',
     price: 35.00,
@@ -33,7 +33,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '3',
+    id: 3,
     name: 'Quattro Stagioni',
     description: 'Molho de tomate, mussarela, presunto, cogumelos, azeitonas e alcachofra',
     price: 35.00,
@@ -48,7 +48,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '4',
+    id: 4,
     name: 'Frango com Catupiry',
     description: 'Molho de tomate, mussarela, frango desfiado e catupiry',
     price: 35.00,
@@ -63,7 +63,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '5',
+    id: 5,
     name: 'Portuguesa',
     description: 'Molho de tomate, mussarela, presunto, ovos, cebola e azeitonas',
     price: 35.00,
@@ -78,7 +78,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '6',
+    id: 6,
     name: 'Calabresa',
     description: 'Molho de tomate, mussarela, calabresa e cebola',
     price: 35.00,
@@ -95,7 +95,7 @@ export const pizzas: Pizza[] = [
 
   // Pizzas Redondas
   {
-    id: '7',
+    id: 7,
     name: 'Margherita Redonda',
     description: 'Molho de tomate, mussarela, manjericão fresco e azeite',
     price: 35.00,
@@ -110,7 +110,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '8',
+    id: 8,
     name: 'Pepperoni Redonda',
     description: 'Molho de tomate, mussarela e fatias de pepperoni',
     price: 35.00,
@@ -125,7 +125,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '9',
+    id: 9,
     name: 'Frango com Catupiry Redonda',
     description: 'Molho de tomate, mussarela, frango desfiado e catupiry',
     price: 35.00,
@@ -140,7 +140,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '10',
+    id: 10,
     name: 'Portuguesa Redonda',
     description: 'Molho de tomate, mussarela, presunto, ovos, cebola e azeitonas',
     price: 35.00,
@@ -157,7 +157,7 @@ export const pizzas: Pizza[] = [
 
   // Pizzas Doces
   {
-    id: '11',
+    id: 11,
     name: 'Brigadeiro',
     description: 'Chocolate, leite condensado e granulado',
     price: 35.00,
@@ -172,7 +172,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '12',
+    id: 12,
     name: 'Nutella com Morango',
     description: 'Nutella, morangos frescos e açúcar de confeiteiro',
     price: 35.00,
@@ -189,7 +189,7 @@ export const pizzas: Pizza[] = [
 
   // Bebidas
   {
-    id: '13',
+    id: 13,
     name: 'Coca-Cola 350ml',
     description: 'Refrigerante Coca-Cola gelado',
     price: 5.50,
@@ -203,7 +203,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '14',
+    id: 14,
     name: 'Guaraná Antarctica 350ml',
     description: 'Refrigerante Guaraná Antarctica gelado',
     price: 5.50,
@@ -217,7 +217,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '15',
+    id: 15,
     name: 'Suco de Laranja 500ml',
     description: 'Suco natural de laranja',
     price: 8.90,
@@ -231,7 +231,7 @@ export const pizzas: Pizza[] = [
     }
   },
   {
-    id: '16',
+    id: 16,
     name: 'Água Mineral 500ml',
     description: 'Água mineral natural gelada',
     price: 3.50,

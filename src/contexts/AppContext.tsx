@@ -45,30 +45,30 @@ interface AppState {
 
 type AppAction =
   | { type: "ADD_TO_CART"; payload: CartItem }
-  | { type: "REMOVE_FROM_CART"; payload: string }
+  | { type: "REMOVE_FROM_CART"; payload: number }
   | {
       type: "UPDATE_CART_QUANTITY";
-      payload: { id: string; quantity: number; size: string };
+      payload: { id: number; quantity: number; size: string };
     }
   | {
       type: "UPDATE_CART_ITEM";
-      payload: { id: string; size: string; updates: Partial<CartItem> };
+      payload: { id: number; size: string; updates: Partial<CartItem> };
     }
   | { type: "CLEAR_CART" }
   | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" }
   | { type: "CREATE_ORDER"; payload: Order }
   | {
       type: "UPDATE_ORDER_STATUS";
-      payload: { id: string; status: OrderStatus };
+      payload: { id: number; status: OrderStatus };
     }
   | { type: "ADD_NOTIFICATION"; payload: string }
   | { type: "REMOVE_NOTIFICATION"; payload: number }
   | { type: "ADD_PIZZA"; payload: Pizza }
   | { type: "UPDATE_PIZZA"; payload: Pizza }
-  | { type: "DELETE_PIZZA"; payload: string }
+  | { type: "DELETE_PIZZA"; payload: number }
   | { type: "ADD_ADDITIONAL"; payload: Additional }
   | { type: "UPDATE_ADDITIONAL"; payload: Additional }
-  | { type: "DELETE_ADDITIONAL"; payload: string }
+  | { type: "DELETE_ADDITIONAL"; payload: number }
   | { type: "SHOW_BEVERAGE_SUGGESTIONS"; payload: Pizza }
   | { type: "HIDE_BEVERAGE_SUGGESTIONS" }
   | { type: "UPDATE_BUSINESS_SETTINGS"; payload: Partial<BusinessSettings> }
@@ -84,9 +84,9 @@ type AppAction =
   | { type: "SET_USERS"; payload: User[] }
   | { type: "ADD_USER"; payload: User }
   | { type: "UPDATE_USER"; payload: User }
-  | { type: "DELETE_USER"; payload: string }
+  | { type: "DELETE_USER"; payload: number }
   | { type: "SET_CURRENT_USER"; payload: User | null }
-  | { type: "REMOVE_ORDER"; payload: string };
+  | { type: "REMOVE_ORDER"; payload: number };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -180,6 +180,10 @@ const initialState: AppState = {
   userPermissions: null,
 };
 
+const generateOrderId = (): number => {
+  return Date.now();
+};
+
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case "SET_LOADING":
@@ -254,9 +258,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "REMOVE_FROM_CART":
       return {
         ...state,
-        cart: state.cart.filter(
-          (item, index) => index.toString() !== action.payload
-        ),
+        cart: state.cart.filter((_, index) => index !== action.payload),
       };
 
     case "UPDATE_CART_QUANTITY":
@@ -292,7 +294,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "CREATE_ORDER":
       console.log("CREATE_ORDER action triggered with payload:", action.payload);
 
-      const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const orderId = generateOrderId();
       const orderWithId = { ...action.payload, id: orderId };
 
       const orderToSend = {

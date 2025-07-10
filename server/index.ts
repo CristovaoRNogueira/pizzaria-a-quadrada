@@ -186,7 +186,7 @@ app.put("/api/pizzas/:id", authenticateToken, async (req, res) => {
     });
 
     const pizza = await prisma.pizza.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: {
         name,
         description,
@@ -232,7 +232,7 @@ app.delete("/api/pizzas/:id", authenticateToken, async (req, res) => {
     console.log("Removendo pizza:", id);
 
     await prisma.pizza.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: { isActive: false },
     });
 
@@ -304,7 +304,7 @@ app.put("/api/additionals/:id", authenticateToken, async (req, res) => {
     });
 
     const additional = await prisma.additional.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: {
         name,
         description,
@@ -329,7 +329,7 @@ app.delete("/api/additionals/:id", authenticateToken, async (req, res) => {
     console.log("Removendo adicional:", id);
 
     await prisma.additional.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: { isActive: false },
     });
 
@@ -385,11 +385,11 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
         quantity: item.quantity,
         selectedSize: item.selectedSize,
         selectedFlavors: item.selectedFlavors.map((flavorId) => ({
-          id: flavorId,
+          id: parseInt(flavorId),
           name: "Sabor"
         })),
         selectedAdditionals: item.selectedAdditionals.map((additionalId) => ({
-          id: additionalId,
+          id: parseInt(additionalId),
           name: "Adicional"
         })),
         notes: item.notes,
@@ -487,8 +487,8 @@ app.post("/api/orders", async (req, res) => {
         pizzaId: item.id,
         quantity: item.quantity,
         selectedSize: item.selectedSize,
-        selectedFlavors: item.selectedFlavors?.map((f: any) => f.id) || [item.id],
-        selectedAdditionals: item.selectedAdditionals?.map((a: any) => a.id) || [],
+        selectedFlavors: item.selectedFlavors?.map((f: any) => f.id.toString()) || [item.id.toString()],
+        selectedAdditionals: item.selectedAdditionals?.map((a: any) => a.id.toString()) || [],
         notes: item.notes || "",
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
@@ -552,7 +552,7 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
     console.log("Atualizando status do pedido:", { id, status });
 
     const order = await prisma.order.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: { status: status.toUpperCase() },
     });
 
@@ -572,7 +572,7 @@ app.delete("/api/orders/:id", authenticateToken, async (req, res) => {
     console.log("Removendo pedido:", id);
 
     await prisma.order.delete({
-      where: { id },
+      where: { id: parseInt(id) },
     });
 
     console.log("Pedido removido com sucesso");

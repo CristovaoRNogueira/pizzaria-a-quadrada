@@ -1,5 +1,5 @@
 export interface Pizza {
-  id: string;
+  id: number;
   name: string;
   description: string;
   price: number;
@@ -15,7 +15,7 @@ export interface Pizza {
 }
 
 export interface Additional {
-  id: string;
+  id: number;
   name: string;
   description: string;
   price: number;
@@ -62,7 +62,7 @@ export interface PaymentInfo {
 }
 
 export interface Order {
-  id: string;
+  id: number;
   customer: Customer;
   items: CartItem[];
   total: number;
@@ -110,7 +110,7 @@ export interface BusinessInfo {
 }
 
 export interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
   password?: string;
@@ -148,4 +148,59 @@ export interface UserPermissions {
     confirmPayment: boolean;
     confirmDelivery: boolean;
   };
+}
+
+// API Response Types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  admin: {
+    id: number;
+    email: string;
+    name: string;
+    role: UserRole;
+    permissions?: UserPermissions;
+  };
+}
+
+export interface CreateOrderRequest {
+  customer: Customer;
+  items: Array<{
+    id: number;
+    name: string;
+    description: string;
+    image: string;
+    category: string;
+    ingredients: string[];
+    quantity: number;
+    selectedSize: string;
+    selectedFlavors: Array<{ id: number; name: string }>;
+    selectedAdditionals?: Array<{ id: number; name: string; price: number }>;
+    notes?: string;
+    price: number;
+  }>;
+  total: number;
+  payment: PaymentInfo;
+}
+
+export interface CreatePizzaRequest {
+  name: string;
+  description: string;
+  image: string;
+  category: Pizza['category'];
+  ingredients: string[];
+  sizes: Pizza['sizes'];
+}
+
+export interface CreateAdditionalRequest {
+  name: string;
+  description: string;
+  price: number;
+  category: Additional['category'];
 }
