@@ -426,13 +426,11 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
         needsChange: order.paymentNeedsChange,
         changeAmount: order.paymentChangeAmount,
         pixCode: order.paymentPixCode,
-        stripePaymentIntentId: order.paymentStripeId,
       },
       paymentMethod: order.paymentMethod,
       paymentNeedsChange: order.paymentNeedsChange,
       paymentChangeAmount: order.paymentChangeAmount,
       paymentPixCode: order.paymentPixCode,
-      paymentStripeId: order.paymentStripeId,
     }));
 
     res.json(formattedOrders);
@@ -536,6 +534,7 @@ app.post("/api/orders", async (req, res) => {
         paymentNeedsChange: payment.needsChange || false,
         paymentChangeAmount: payment.changeAmount,
         paymentPixCode: payment.pixCode,
+        paymentStripeId: payment.stripePaymentIntentId,
         orderItems: {
           create: orderItemsData,
         },
@@ -712,13 +711,11 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
         needsChange: order.paymentNeedsChange,
         changeAmount: order.paymentChangeAmount,
         pixCode: order.paymentPixCode,
-        stripePaymentIntentId: order.paymentStripeId,
       },
       paymentMethod: order.paymentMethod,
       paymentNeedsChange: order.paymentNeedsChange,
       paymentChangeAmount: order.paymentChangeAmount,
       paymentPixCode: order.paymentPixCode,
-      paymentStripeId: order.paymentStripeId,
     };
 
     res.json(formattedOrder);
