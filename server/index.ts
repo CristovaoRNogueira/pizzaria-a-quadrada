@@ -426,11 +426,13 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
         needsChange: order.paymentNeedsChange,
         changeAmount: order.paymentChangeAmount,
         pixCode: order.paymentPixCode,
+        stripePaymentIntentId: order.paymentStripeId,
       },
       paymentMethod: order.paymentMethod,
       paymentNeedsChange: order.paymentNeedsChange,
       paymentChangeAmount: order.paymentChangeAmount,
       paymentPixCode: order.paymentPixCode,
+      paymentStripeId: order.paymentStripeId,
     }));
 
     res.json(formattedOrders);
@@ -711,11 +713,13 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
         needsChange: order.paymentNeedsChange,
         changeAmount: order.paymentChangeAmount,
         pixCode: order.paymentPixCode,
+        stripePaymentIntentId: order.paymentStripeId,
       },
       paymentMethod: order.paymentMethod,
       paymentNeedsChange: order.paymentNeedsChange,
       paymentChangeAmount: order.paymentChangeAmount,
       paymentPixCode: order.paymentPixCode,
+      paymentStripeId: order.paymentStripeId,
     };
 
     res.json(formattedOrder);
@@ -981,11 +985,8 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
       payment: {
         pixKey: updatedSettings!.pixKey,
         pixName: updatedSettings!.pixName,
-        stripePublishableKey: updatedSettings!.stripePublishableKey,
-        stripeSecretKey: updatedSettings!.stripeSecretKey,
         acceptCash: updatedSettings!.acceptCash,
         acceptPix: updatedSettings!.acceptPix,
-        acceptCard: updatedSettings!.acceptCard,
       },
       businessInfo: businessInfo || {
         name: "Pizzaria a Quadrada",
