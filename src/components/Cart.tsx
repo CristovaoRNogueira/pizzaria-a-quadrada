@@ -175,6 +175,7 @@ const Cart: React.FC = () => {
       console.log("Iniciando criação do pedido...");
 
       const orderData = {
+        customer: {
           name: customer.name,
           phone: customer.phone,
           address: customer.address || "",
@@ -198,6 +199,7 @@ const Cart: React.FC = () => {
           price: item.price,
           selectedAdditionals: item.selectedAdditionals || [],
           notes: item.notes || "",
+        })),
         payment: {
           method: payment.method,
           needsChange: payment.needsChange || false,
