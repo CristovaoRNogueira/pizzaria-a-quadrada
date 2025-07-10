@@ -20,7 +20,6 @@ import {
   Package,
   ArrowRight,
   DollarSign,
-  CreditCard
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { apiService } from '../services/api';
@@ -716,10 +715,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
                   R$ {getOrderTotal(order).toFixed(2)}
                 </p>
                 <p className="text-xs text-gray-600 flex items-center">
-                  <CreditCard className="h-3 w-3 mr-1" />
+                  <DollarSign className="h-3 w-3 mr-1" />
                   {order.payment.method === 'dinheiro' && 'Dinheiro'}
                   {order.payment.method === 'pix' && 'PIX'}
-                  {order.payment.method === 'cartao' && 'Cartão'}
                 </p>
               </div>
             </div>
@@ -1105,7 +1103,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
                     <span className="font-medium">
                       {selectedOrder.payment.method === 'dinheiro' && 'Dinheiro'}
                       {selectedOrder.payment.method === 'pix' && 'PIX'}
-                      {selectedOrder.payment.method === 'cartao' && 'Cartão de Crédito'}
                     </span>
                   </div>
                   

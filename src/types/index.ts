@@ -62,11 +62,10 @@ export interface Customer {
 }
 
 export interface PaymentInfo {
-  method: 'dinheiro' | 'pix' | 'cartao';
+  method: 'dinheiro' | 'pix';
   needsChange?: boolean;
   changeAmount?: number;
   pixCode?: string;
-  stripePaymentIntentId?: string;
   pixPaid?: boolean;
   pixTransactionId?: string;
 }
@@ -100,11 +99,10 @@ export interface Order {
   paymentNeedsChange: boolean;
   paymentChangeAmount?: number;
   paymentPixCode?: string;
-  paymentStripeId?: string;
   orderItems?: OrderItem[];
 }
 
-export type OrderStatus = 'NEW' | 'ACCEPTED' | 'PRODUCTION' | 'DELIVERY' | 'COMPLETED' | 'CANCELLED';
+export type OrderStatus = 'new' | 'accepted' | 'production' | 'delivery' | 'completed' | 'cancelled';
 
 export interface BusinessHours {
   id?: number;
@@ -118,11 +116,8 @@ export interface BusinessHours {
 export interface PaymentSettings {
   pixKey: string;
   pixName: string;
-  stripePublishableKey: string;
-  stripeSecretKey: string;
   acceptCash: boolean;
   acceptPix: boolean;
-  acceptCard: boolean;
 }
 
 export interface BusinessSettings {
@@ -249,7 +244,6 @@ export interface CreateOrderRequest {
     needsChange?: boolean;
     changeAmount?: number;
     pixCode?: string;
-    stripePaymentIntentId?: string;
   };
 }
 

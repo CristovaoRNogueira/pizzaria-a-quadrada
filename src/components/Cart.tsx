@@ -7,7 +7,6 @@ import {
   ShoppingBag,
   MapPin,
   Store,
-  CreditCard,
   Banknote,
   QrCode,
 } from "lucide-react";
@@ -323,7 +322,6 @@ const Cart: React.FC = () => {
     const labels = {
       dinheiro: "Dinheiro",
       pix: "PIX",
-      cartao: "Cartão",
     };
     return labels[method as keyof typeof labels] || method;
   };
@@ -334,8 +332,6 @@ const Cart: React.FC = () => {
         return <Banknote className="h-4 w-4" />;
       case "pix":
         return <QrCode className="h-4 w-4" />;
-      case "cartao":
-        return <CreditCard className="h-4 w-4" />;
       default:
         return <Banknote className="h-4 w-4" />;
     }
@@ -567,21 +563,6 @@ const Cart: React.FC = () => {
                     <span>PIX</span>
                   </button>
                 )}
-
-                {state.businessSettings.payment.acceptCard && (
-                  <button
-                    type="button"
-                    onClick={() => setPayment({ method: "cartao" })}
-                    className={`w-full p-3 rounded-lg border-2 transition-colors flex items-center space-x-3 ${
-                      payment.method === "cartao"
-                        ? "border-red-500 bg-red-50 text-red-700"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                  >
-                    <CreditCard className="h-5 w-5" />
-                    <span>Cartão de Crédito</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -766,14 +747,14 @@ const Cart: React.FC = () => {
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
-
+            {payment.method === "pix" ? (
               <button
                 onClick={() => handleRemoveItem(item.id, item.selectedSize)}
                 className="text-red-600 hover:text-red-700 p-2 transition-colors"
               >
-                <Trash2 className="h-5 w-5" />
+                <QrCode className="h-5 w-5" />
               </button>
-            </div>
+                  {isSubmitting ? "Processando..." : "Pagar com PIX"}
           </div>
         ))}
       </div>

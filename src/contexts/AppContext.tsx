@@ -22,7 +22,6 @@ import {
 } from "../types";
 import { pizzas as initialPizzas } from "../data/pizzas";
 import { additionals as initialAdditionals } from "../data/additionals";
-import { whatsappService } from "../services/whatsapp";
 import { apiService } from "../services/api";
 
 interface AppState {
@@ -101,11 +100,8 @@ const defaultBusinessHours: BusinessHours[] = [
 export const defaultPaymentSettings: PaymentSettings = {
   pixKey: "77999742491",
   pixName: "Pizzaria a Quadrada",
-  stripePublishableKey: "",
-  stripeSecretKey: "",
   acceptCash: true,
   acceptPix: true,
-  acceptCard: false,
 };
 
 const defaultBusinessInfo: BusinessInfo = {
@@ -337,17 +333,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         .catch((error) => {
           console.error("❌ Erro ao enviar pedido para o backend:", error);
         });
-
-      setTimeout(async () => {
-        try {
-          await whatsappService.sendOrderNotification(
-            orderWithId.customer.phone,
-            orderWithId
-          );
-        } catch (error) {
-          console.error("Erro ao enviar notificação WhatsApp:", error);
-        }
-      }, 1000);
 
       return {
         ...state,

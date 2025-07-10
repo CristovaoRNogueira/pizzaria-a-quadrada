@@ -1,4 +1,3 @@
-import axios, { AxiosResponse } from 'axios';
 import { 
   Pizza, 
   Additional, 
@@ -13,138 +12,166 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 10000,
-});
+interface RequestConfig {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: Record<string, string>;
+  body?: string;
+}
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
+class ApiService {
+  private baseURL: string;
+
+  constructor() {
+    this.baseURL = API_BASE_URL;
+  }
+
+  private async request<T>(endpoint: string, config: RequestConfig = { method: 'GET' }): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...config.headers,
+    };
+
+    // Add auth token if available
     const token = localStorage.getItem('admin_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  },
-  (error) => {
-    console.error('Request interceptor error:', error);
-    return Promise.reject(error);
-  }
-);
 
-// Response interceptor
-api.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_authenticated');
-      localStorage.removeItem('user_role');
-      if (window.location.pathname.includes('/admin')) {
-        window.location.href = '/admin';
+    try {
+      const response = await fetch(url, {
+        method: config.method,
+        headers,
+        body: config.body,
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_authenticated');
+        localStorage.removeItem('user_role');
+        if (window.location.pathname.includes('/admin')) {
+          window.location.href = '/admin';
+        }
+        throw new Error('Unauthorized');
       }
-    }
-    
-    console.error('API Error:', {
-      status: error.response?.status,
-      message: error.response?.data?.error || error.message,
-      url: error.config?.url,
-    });
-    
-    return Promise.reject(error);
-  }
-);
 
-export const apiService = {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', {
+        url,
+        method: config.method,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
   // Authentication
-  login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>('/auth/login', { email, password });
-    return response.data;
-  },
+  async login(email: string, password: string): Promise<LoginResponse> {
+    return this.request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
 
   // Pizzas
-  getPizzas: async (): Promise<Pizza[]> => {
-    const response = await api.get<Pizza[]>('/pizzas');
-    return response.data;
-  },
+  async getPizzas(): Promise<Pizza[]> {
+    return this.request<Pizza[]>('/pizzas');
+  }
 
-  createPizza: async (pizzaData: CreatePizzaRequest): Promise<Pizza> => {
-    const response = await api.post<Pizza>('/pizzas', pizzaData);
-    return response.data;
-  },
+  async createPizza(pizzaData: CreatePizzaRequest): Promise<Pizza> {
+    return this.request<Pizza>('/pizzas', {
+      method: 'POST',
+      body: JSON.stringify(pizzaData),
+    });
+  }
 
-  updatePizza: async (id: number, pizzaData: CreatePizzaRequest): Promise<Pizza> => {
-    const response = await api.put<Pizza>(`/pizzas/${id}`, pizzaData);
-    return response.data;
-  },
+  async updatePizza(id: number, pizzaData: CreatePizzaRequest): Promise<Pizza> {
+    return this.request<Pizza>(`/pizzas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(pizzaData),
+    });
+  }
 
-  deletePizza: async (id: number): Promise<ApiResponse> => {
-    const response = await api.delete<ApiResponse>(`/pizzas/${id}`);
-    return response.data;
-  },
+  async deletePizza(id: number): Promise<ApiResponse> {
+    return this.request<ApiResponse>(`/pizzas/${id}`, {
+      method: 'DELETE',
+    });
+  }
 
   // Additionals
-  getAdditionals: async (): Promise<Additional[]> => {
-    const response = await api.get<Additional[]>('/additionals');
-    return response.data;
-  },
+  async getAdditionals(): Promise<Additional[]> {
+    return this.request<Additional[]>('/additionals');
+  }
 
-  createAdditional: async (additionalData: CreateAdditionalRequest): Promise<Additional> => {
-    const response = await api.post<Additional>('/additionals', additionalData);
-    return response.data;
-  },
+  async createAdditional(additionalData: CreateAdditionalRequest): Promise<Additional> {
+    return this.request<Additional>('/additionals', {
+      method: 'POST',
+      body: JSON.stringify(additionalData),
+    });
+  }
 
-  updateAdditional: async (id: number, additionalData: Partial<Additional>): Promise<Additional> => {
-    const response = await api.put<Additional>(`/additionals/${id}`, additionalData);
-    return response.data;
-  },
+  async updateAdditional(id: number, additionalData: Partial<Additional>): Promise<Additional> {
+    return this.request<Additional>(`/additionals/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(additionalData),
+    });
+  }
 
-  deleteAdditional: async (id: number): Promise<ApiResponse> => {
-    const response = await api.delete<ApiResponse>(`/additionals/${id}`);
-    return response.data;
-  },
+  async deleteAdditional(id: number): Promise<ApiResponse> {
+    return this.request<ApiResponse>(`/additionals/${id}`, {
+      method: 'DELETE',
+    });
+  }
 
   // Orders
-  getOrders: async (): Promise<Order[]> => {
-    const response = await api.get<Order[]>('/orders');
-    return response.data;
-  },
+  async getOrders(): Promise<Order[]> {
+    return this.request<Order[]>('/orders');
+  }
 
-  createOrder: async (orderData: CreateOrderRequest): Promise<Order> => {
-    const response = await api.post<Order>('/orders', orderData);
-    return response.data;
-  },
+  async createOrder(orderData: CreateOrderRequest): Promise<Order> {
+    return this.request<Order>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+  }
 
-  updateOrderStatus: async (id: number, status: string): Promise<Order> => {
-    const response = await api.put<Order>(`/orders/${id}/status`, { status });
-    return response.data;
-  },
+  async updateOrderStatus(id: number, status: string): Promise<Order> {
+    return this.request<Order>(`/orders/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
 
-  deleteOrder: async (id: number): Promise<ApiResponse> => {
-    const response = await api.delete<ApiResponse>(`/orders/${id}`);
-    return response.data;
-  },
+  async deleteOrder(id: number): Promise<ApiResponse> {
+    return this.request<ApiResponse>(`/orders/${id}`, {
+      method: 'DELETE',
+    });
+  }
 
   // Business Settings
-  getBusinessSettings: async (): Promise<BusinessSettings> => {
-    const response = await api.get<BusinessSettings>('/business-settings');
-    return response.data;
-  },
+  async getBusinessSettings(): Promise<BusinessSettings> {
+    return this.request<BusinessSettings>('/business-settings');
+  }
 
-  updateBusinessSettings: async (settings: Partial<BusinessSettings>): Promise<BusinessSettings> => {
-    const response = await api.put<BusinessSettings>('/business-settings', settings);
-    return response.data;
-  },
+  async updateBusinessSettings(settings: Partial<BusinessSettings>): Promise<BusinessSettings> {
+    return this.request<BusinessSettings>('/business-settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
 
   // Health Check
-  healthCheck: async (): Promise<{ status: string; timestamp: string }> => {
-    const response = await api.get<{ status: string; timestamp: string }>('/health');
-    return response.data;
-  },
-};
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    return this.request<{ status: string; timestamp: string }>('/health');
+  }
+}
 
-export default api;
+export const apiService = new ApiService();
+export default apiService;
