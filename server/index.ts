@@ -482,6 +482,91 @@ app.post("/api/orders", async (req, res) => {
 
     console.log("✅ Validação dos dados concluída");
 
+    // Verificar se já existe um pedido idêntico recente (últimos 5 minutos)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const existingOrder = await prisma.order.findFirst({
+      where: {
+        total: total,
+        createdAt: {
+          gte: fiveMinutesAgo
+        }
+      },
+      include: {
+        customer: true,
+        orderItems: true
+      }
+    });
+
+    if (existingOrder && 
+        existingOrder.customer.phone === customer.phone &&
+        existingOrder.customer.name === customer.name &&
+        existingOrder.orderItems.length === items.length) {
+      console.log("⚠️ Pedido duplicado detectado, retornando pedido existente");
+      
+      const formattedOrder = {
+        id: existingOrder.id,
+        customerId: existingOrder.customerId,
+        customer: {
+          id: existingOrder.customer.id,
+          name: existingOrder.customer.name,
+          phone: existingOrder.customer.phone,
+          address: existingOrder.customer.address || "",
+          neighborhood: existingOrder.customer.neighborhood || "",
+          reference: existingOrder.customer.reference || "",
+          deliveryType: existingOrder.customer.deliveryType,
+          latitude: existingOrder.customer.latitude,
+          longitude: existingOrder.customer.longitude,
+          location:
+            existingOrder.customer.latitude && existingOrder.customer.longitude
+              ? {
+                  lat: existingOrder.customer.latitude,
+                  lng: existingOrder.customer.longitude,
+                }
+              : undefined,
+          createdAt: existingOrder.customer.createdAt,
+          updatedAt: existingOrder.customer.updatedAt,
+        },
+        items: existingOrder.orderItems.map((item) => ({
+          id: item.pizzaId,
+          name: "Pizza",
+          description: "",
+          image: "",
+          category: "quadrada",
+          ingredients: [],
+          quantity: item.quantity,
+          selectedSize: item.selectedSize,
+          selectedFlavors: item.selectedFlavors.map((flavorId) => ({
+            id: parseInt(flavorId),
+            name: "Sabor"
+          })),
+          selectedAdditionals: item.selectedAdditionals.map((additionalId) => ({
+            id: parseInt(additionalId),
+            name: "Adicional"
+          })),
+          notes: item.notes,
+          price: item.unitPrice,
+        })),
+        total: existingOrder.total,
+        status: existingOrder.status.toLowerCase() as any,
+        notes: existingOrder.notes,
+        createdAt: existingOrder.createdAt,
+        updatedAt: existingOrder.updatedAt,
+        payment: {
+          method: existingOrder.paymentMethod,
+          needsChange: existingOrder.paymentNeedsChange,
+          changeAmount: existingOrder.paymentChangeAmount,
+          pixCode: existingOrder.paymentPixCode,
+        },
+        paymentMethod: existingOrder.paymentMethod,
+        paymentNeedsChange: existingOrder.paymentNeedsChange,
+        paymentChangeAmount: existingOrder.paymentChangeAmount,
+        paymentPixCode: existingOrder.paymentPixCode,
+        paymentStripeId: existingOrder.paymentStripeId,
+      };
+
+      return res.json(formattedOrder);
+    }
+
     console.log("🔍 Buscando/criando cliente...");
     const customerData = await prisma.customer.upsert({
       where: { phone: customer.phone },
@@ -536,7 +621,6 @@ app.post("/api/orders", async (req, res) => {
         paymentNeedsChange: payment.needsChange || false,
         paymentChangeAmount: payment.changeAmount,
         paymentPixCode: payment.pixCode,
-        paymentStripeId: payment.stripePaymentIntentId,
         orderItems: {
           create: orderItemsData,
         },

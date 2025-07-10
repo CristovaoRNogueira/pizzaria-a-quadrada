@@ -175,7 +175,6 @@ const Cart: React.FC = () => {
       console.log("Iniciando criação do pedido...");
 
       const orderData = {
-        customer: {
           name: customer.name,
           phone: customer.phone,
           address: customer.address || "",
@@ -197,35 +196,26 @@ const Cart: React.FC = () => {
             { id: item.id, name: item.name },
           ],
           price: item.price,
-        })),
-        total,
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
         payment: {
           method: payment.method,
           needsChange: payment.needsChange || false,
           changeAmount: payment.changeAmount,
           pixCode: payment.pixCode,
-          stripePaymentIntentId: payment.stripePaymentIntentId,
         },
       };
 
       console.log("Dados do pedido preparados:", orderData);
 
-      // Criar pedido via dispatch (que enviará para o backend)
-      const order = {
-        id: Date.now().toString(),
-        customer: orderData.customer,
-        items: orderData.items,
-        total: orderData.total,
-        status: "new" as const,
-        createdAt: new Date(),
-        payment: orderData.payment,
-      };
-
-      dispatch({ type: "CREATE_ORDER", payload: order });
+      // Enviar pedido para o backend via dispatch
+      dispatch({ type: "CREATE_ORDER", payload: orderData });
+      
       dispatch({
         type: "ADD_NOTIFICATION",
         payload: "Pedido enviado com sucesso!",
       });
+      
       dispatch({ type: "SET_VIEW", payload: "menu" });
 
       // Simulate WhatsApp notification
@@ -276,27 +266,21 @@ const Cart: React.FC = () => {
           selectedFlavors: item.selectedFlavors || [
             { id: item.id, name: item.name },
           ],
+          selectedAdditionals: item.selectedAdditionals || [],
+          notes: item.notes || "",
           price: item.price,
         })),
         total,
         payment: paymentData,
       };
 
-      const order = {
-        id: Date.now().toString(),
-        customer: orderData.customer,
-        items: orderData.items,
-        total: orderData.total,
-        status: "new" as const,
-        createdAt: new Date(),
-        payment: paymentData,
-      };
-
-      dispatch({ type: "CREATE_ORDER", payload: order });
+      dispatch({ type: "CREATE_ORDER", payload: orderData });
+      
       dispatch({
         type: "ADD_NOTIFICATION",
         payload: "Pedido e pagamento processados com sucesso!",
       });
+      
       dispatch({ type: "SET_VIEW", payload: "menu" });
     } catch (error) {
       console.error("Erro ao processar pagamento:", error);

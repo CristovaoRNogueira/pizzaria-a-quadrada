@@ -290,20 +290,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "CREATE_ORDER":
       console.log("CREATE_ORDER action triggered with payload:", action.payload);
 
-      const orderId = generateOrderId();
-      const orderWithId = { ...action.payload, id: orderId };
+      // Não gerar ID aqui, deixar o backend gerar
+      const orderToCreate = action.payload;
 
       const orderToSend = {
         customer: {
-          name: orderWithId.customer.name,
-          phone: orderWithId.customer.phone,
-          address: orderWithId.customer.address || "",
-          neighborhood: orderWithId.customer.neighborhood || "",
-          reference: orderWithId.customer.reference || "",
-          deliveryType: orderWithId.customer.deliveryType,
-          location: orderWithId.customer.location,
+          name: orderToCreate.customer.name,
+          phone: orderToCreate.customer.phone,
+          address: orderToCreate.customer.address || "",
+          neighborhood: orderToCreate.customer.neighborhood || "",
+          reference: orderToCreate.customer.reference || "",
+          deliveryType: orderToCreate.customer.deliveryType,
+          location: orderToCreate.customer.location,
         },
-        items: orderWithId.items.map((item) => ({
+        items: orderToCreate.items.map((item) => ({
           id: item.id,
           name: item.name,
           description: item.description,
@@ -319,8 +319,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           notes: item.notes || "",
           price: item.price,
         })),
-        total: orderWithId.total,
-        payment: orderWithId.payment,
+        total: orderToCreate.total,
+        payment: orderToCreate.payment,
       };
 
       console.log("Dados preparados para envio ao backend:", orderToSend);
@@ -329,17 +329,30 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         .createOrder(orderToSend)
         .then((response) => {
           console.log("✅ Pedido enviado para o backend com sucesso:", response);
+          
+          // Atualizar o estado apenas com o pedido retornado pelo backend
+          dispatch({
+            type: 'SET_CURRENT_ORDER',
+            payload: response
+          });
+          
+          dispatch({
+            type: 'SHOW_ORDER_TRACKING',
+            payload: true
+          });
         })
         .catch((error) => {
           console.error("❌ Erro ao enviar pedido para o backend:", error);
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            payload: 'Erro ao enviar pedido. Tente novamente.'
+          });
         });
 
+      // Limpar carrinho imediatamente
       return {
         ...state,
-        orders: [...state.orders, orderWithId],
-        cart: [],
-        currentOrder: orderWithId,
-        showOrderTracking: true,
+        cart: []
       };
 
     case "REMOVE_ORDER":
