@@ -165,7 +165,7 @@ const OrderTracking: React.FC = () => {
           </div>
           
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Pedido #{order.id.slice(-8)}</h2>
+            <h2 className="text-2xl font-bold mb-2">Pedido #{order.id.toString().slice(-8)}</h2>
             <p className="text-red-100">
               Feito às {formatTime(new Date(order.createdAt))}
             </p>
@@ -341,7 +341,7 @@ const OrderTracking: React.FC = () => {
             Dúvidas sobre seu pedido?
           </p>
           <a
-            href={`https://wa.me/5577999742491?text=Olá! Tenho uma dúvida sobre meu pedido ${order.id.slice(-8)}`}
+            href={`https://wa.me/5577999742491?text=Olá! Tenho uma dúvida sobre meu pedido ${order.id.toString().slice(-8)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"

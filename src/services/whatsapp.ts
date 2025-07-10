@@ -191,7 +191,7 @@ class WhatsAppService {
     
     let message = `🍕 *PIZZARIA A QUADRADA*\n`;
     message += `_A qualidade é nossa diferença!_\n\n`;
-    message += `📋 *NOVO PEDIDO #${id}*\n\n`;
+    message += `📋 *NOVO PEDIDO #${id.toString()}*\n\n`;
     message += `👤 *Cliente:* ${customer.name}\n`;
     message += `📱 *Telefone:* ${customer.phone}\n`;
     message += `📍 *Endereço:* ${customer.address}, ${customer.neighborhood}\n`;
@@ -228,10 +228,10 @@ class WhatsAppService {
     const { customer, id } = orderData;
     
     const statusMessages = {
-      accepted: `✅ *PEDIDO ACEITO*\n\nOlá ${customer.name}!\n\nSeu pedido #${id} foi aceito e está sendo preparado!\n\n⏰ Tempo estimado: 30-40 minutos\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`,
-      production: `🔥 *PIZZA NO FORNO*\n\nOlá ${customer.name}!\n\nSua pizza está sendo preparada! 🍕\n\nPedido #${id} em produção.\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`,
-      delivery: `🚚 *SAIU PARA ENTREGA*\n\nOlá ${customer.name}!\n\nSeu pedido #${id} saiu para entrega!\n\n📍 Endereço: ${orderData.customer.address}, ${orderData.customer.neighborhood}\n⏰ Chegará em aproximadamente 15-20 minutos\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`,
-      completed: `✅ *PEDIDO ENTREGUE*\n\nOlá ${customer.name}!\n\nPedido #${id} entregue com sucesso!\n\nObrigado pela preferência! ❤️\nEsperamos você novamente em breve!\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`
+      accepted: `✅ *PEDIDO ACEITO*\n\nOlá ${customer.name}!\n\nSeu pedido #${id.toString()} foi aceito e está sendo preparado!\n\n⏰ Tempo estimado: 30-40 minutos\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`,
+      production: `🔥 *PIZZA NO FORNO*\n\nOlá ${customer.name}!\n\nSua pizza está sendo preparada! 🍕\n\nPedido #${id.toString()} em produção.\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`,
+      delivery: `🚚 *SAIU PARA ENTREGA*\n\nOlá ${customer.name}!\n\nSeu pedido #${id.toString()} saiu para entrega!\n\n📍 Endereço: ${orderData.customer.address}, ${orderData.customer.neighborhood}\n⏰ Chegará em aproximadamente 15-20 minutos\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`,
+      completed: `✅ *PEDIDO ENTREGUE*\n\nOlá ${customer.name}!\n\nPedido #${id.toString()} entregue com sucesso!\n\nObrigado pela preferência! ❤️\nEsperamos você novamente em breve!\n\n🍕 *PIZZARIA A QUADRADA*\n_A qualidade é nossa diferença!_`
     };
 
     return statusMessages[status as keyof typeof statusMessages] || 'Status atualizado!';

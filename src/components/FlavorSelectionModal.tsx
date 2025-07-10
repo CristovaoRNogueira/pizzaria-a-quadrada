@@ -269,14 +269,14 @@ const FlavorSelectionModal: React.FC<FlavorSelectionModalProps> = ({
                     onClick={() => handleFlavorToggle(flavor)}
                     disabled={!canSelect}
                     className={`p-4 rounded-lg border-2 transition-all text-left relative ${
-                      isSelected
+                      selectedFlavors.some(f => f.id === flavor.id)
                         ? 'border-red-500 bg-red-50'
                         : canSelect
                         ? 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                         : 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
                     }`}
                   >
-                    {isSelected && (
+                    {selectedFlavors.some(f => f.id === flavor.id) && (
                       <div className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1">
                         <Check className="h-3 w-3" />
                       </div>
@@ -315,14 +315,14 @@ const FlavorSelectionModal: React.FC<FlavorSelectionModalProps> = ({
                   <h5 className="font-medium text-gray-700 mb-2 capitalize">{category}s</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {categoryAdditionals.map(additional => {
-                      const isSelected = selectedAdditionals.some(a => a.id === additional.id);
+                      const isAdditionalSelected = selectedAdditionals.some(a => a.id === additional.id);
                       
                       return (
                         <button
                           key={additional.id}
                           onClick={() => handleAdditionalToggle(additional)}
                           className={`p-3 rounded-lg border-2 transition-colors text-left ${
-                            isSelected
+                            isAdditionalSelected
                               ? 'border-red-500 bg-red-50 text-red-700'
                               : 'border-gray-300 hover:border-gray-400'
                           }`}
@@ -368,14 +368,14 @@ const FlavorSelectionModal: React.FC<FlavorSelectionModalProps> = ({
             <div className="mb-2">
               <p className="text-sm font-medium text-gray-700 mb-1">Sabores:</p>
               {selectedFlavors.map((flavor, index) => (
-                <p key={flavor.id} className="text-sm text-gray-600">
+                <p key={`flavor-${flavor.id}`} className="text-sm text-gray-600">
                   {index + 1}. {flavor.name}
                 </p>
               ))}
             </div>
             
             {selectedAdditionals.map(additional => (
-              <div key={additional.id} className="flex justify-between items-center text-sm text-gray-600">
+              <div key={`additional-${additional.id}`} className="flex justify-between items-center text-sm text-gray-600">
                 <span>+ {additional.name}</span>
                 <span>R$ {additional.price.toFixed(2)}</span>
               </div>

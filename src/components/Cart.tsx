@@ -52,7 +52,7 @@ const Cart: React.FC = () => {
   const handleRemoveItem = (id: number, size: string) => {
     dispatch({
       type: "REMOVE_FROM_CART",
-      payload: state.cart.findIndex(item => 
+      payload: state.cart.findIndex((item, index) => 
         item.id === id && 
         item.selectedSize === size
       ),

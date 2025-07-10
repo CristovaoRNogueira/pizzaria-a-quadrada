@@ -143,7 +143,7 @@ const DeliveryPanel: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Clock className="h-4 w-4" />
-                      <span className="text-sm font-medium">#{order.id.slice(-8)}</span>
+                      <span className="text-sm font-medium">#{order.id.toString().slice(-8)}</span>
                     </div>
                     <span className="text-xs font-medium">{formatTime(order.createdAt)}</span>
                   </div>

@@ -44,10 +44,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
     setPixPaymentStatus('checking');
     setCheckingPayment(true);
     
-    dispatch({
-      type: 'ADD_NOTIFICATION',
-      payload: 'Verificando pagamento PIX...'
-    });
+    // Note: dispatch is not available in this component context
+    // This would need to be passed as a prop or use a different notification method
     
     // Simular verificação automática de pagamento PIX
     setTimeout(() => {
@@ -59,10 +57,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
         setPixPaid(true);
         setCheckingPayment(false);
         
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          payload: '✅ Pagamento PIX confirmado automaticamente!'
-        });
+        // Note: dispatch is not available in this component context
         
         setTimeout(() => {
           onSuccess({
@@ -76,10 +71,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, onSuccess, onClose 
         setPixPaymentStatus('failed');
         setCheckingPayment(false);
         
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          payload: '⚠️ Pagamento PIX não detectado. Tente novamente ou confirme manualmente.'
-        });
+        // Note: dispatch is not available in this component context
       }
     }, 4000); // Simular tempo de verificação
   };

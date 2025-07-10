@@ -106,11 +106,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    apiService.updateOrderStatus(orderId, newStatus.toUpperCase())
+    const orderIdNumber = parseInt(orderId);
+    apiService.updateOrderStatus(orderIdNumber, newStatus.toUpperCase())
       .then(() => {
         dispatch({
           type: 'UPDATE_ORDER_STATUS',
-          payload: { id: orderId, status: newStatus }
+          payload: { id: orderIdNumber, status: newStatus }
         });
         dispatch({
           type: 'ADD_NOTIFICATION',
@@ -128,7 +129,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
 
   const handleAdvanceStatus = (orderId: string, currentStatus: OrderStatus) => {
     const nextStatus = getNextStatus(currentStatus);
-    const orderIdNumber = parseInt(orderId);
+    const orderIdNumber = typeof orderId === 'string' ? parseInt(orderId) : orderId;
     if (nextStatus) {
       // Atualizar no backend
       apiService.updateOrderStatus(orderIdNumber, nextStatus.toUpperCase())
@@ -161,7 +162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   const handleDeleteOrder = (orderId: string) => {
-    const orderIdNumber = parseInt(orderId);
+    const orderIdNumber = typeof orderId === 'string' ? parseInt(orderId) : orderId;
     if (confirm('Tem certeza que deseja excluir este pedido?')) {
       apiService.deleteOrder(orderIdNumber)
         .then(() => {
@@ -249,7 +250,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Pedido #${order.id.slice(-8)} - Pizzaria a Quadrada</title>
+        <title>Pedido #${order.id.toString().slice(-8)} - Pizzaria a Quadrada</title>
         <style>
           @media print {
             @page {
@@ -365,7 +366,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
         </div>
         
         <div class="order-info">
-          <h2>PEDIDO #${order.id.slice(-8)}</h2>
+          <h2>PEDIDO #${order.id.toString().slice(-8)}</h2>
           <p><strong>Data/Hora:</strong> ${formatTime(order.createdAt)}</p>
           <p><strong>Status:</strong> <span class="status-badge">${getStatusLabel(order.status).toUpperCase()}</span></p>
         </div>
@@ -445,7 +446,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   const handleWhatsAppContact = (order: Order) => {
-    const message = `Olá ${order.customer.name}! Sobre seu pedido #${order.id.slice(-8)}...`;
+    const message = `Olá ${order.customer.name}! Sobre seu pedido #${order.id.toString().slice(-8)}...`;
     const whatsappUrl = `https://wa.me/${order.customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -602,7 +603,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
                   {getStatusIcon(order.status)}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">#{order.id.slice(-8)}</p>
+                  <p className="font-medium text-gray-900">#{order.id.toString().slice(-8)}</p>
                   <p className="text-sm text-gray-600">{order.customer.name}</p>
                 </div>
               </div>
@@ -669,7 +670,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   {getStatusIcon(order.status)}
-                  <span className="text-xs font-medium">#{order.id.slice(-8)}</span>
+                  <span className="text-xs font-medium">#{order.id.toString().slice(-8)}</span>
                   {confirmedPayments.has(order.id) && (
                     <div className="flex items-center space-x-1 bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                       <DollarSign className="h-3 w-3" />
@@ -1014,7 +1015,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b p-6 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-800">
-                Detalhes do Pedido #{selectedOrder.id.slice(-8)}
+                Detalhes do Pedido #{selectedOrder.id.toString().slice(-8)}
               </h3>
               <button
                 onClick={() => setShowOrderModal(false)}

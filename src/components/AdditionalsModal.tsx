@@ -128,7 +128,7 @@ const AdditionalsModal: React.FC<AdditionalsModalProps> = ({ item, onClose, onSa
             </div>
             
             {selectedAdditionals.map(additional => (
-              <div key={additional.id} className="flex justify-between items-center text-sm text-gray-600">
+              <div key={`selected-additional-${additional.id}`} className="flex justify-between items-center text-sm text-gray-600">
                 <span>+ {additional.name}</span>
                 <span>R$ {additional.price.toFixed(2)}</span>
               </div>
