@@ -59,7 +59,7 @@ const PizzaManager: React.FC = () => {
       });
     } else {
       const newPizza: Pizza = {
-        id: `pizza-${Date.now()}`,
+        id: Date.now(),
         ...formData,
         price: formData.sizes.medium
       };
@@ -89,7 +89,7 @@ const PizzaManager: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm('Tem certeza que deseja excluir esta pizza?')) {
       dispatch({
         type: 'DELETE_PIZZA',

@@ -39,7 +39,7 @@ const Cart: React.FC = () => {
   );
 
   const handleQuantityChange = (
-    id: string,
+    id: number,
     size: string,
     newQuantity: number
   ) => {
@@ -49,13 +49,13 @@ const Cart: React.FC = () => {
     });
   };
 
-  const handleRemoveItem = (id: string, size: string) => {
+  const handleRemoveItem = (id: number, size: string) => {
     dispatch({
       type: "REMOVE_FROM_CART",
       payload: state.cart.findIndex(item => 
         item.id === id && 
         item.selectedSize === size
-      ).toString(),
+      ),
     });
   };
 

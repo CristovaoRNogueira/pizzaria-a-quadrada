@@ -44,7 +44,7 @@ const AdditionalsManager: React.FC = () => {
       });
     } else {
       const newAdditional: Additional = {
-        id: `add-${Date.now()}`,
+        id: Date.now(),
         ...formData
       };
       dispatch({
@@ -72,7 +72,7 @@ const AdditionalsManager: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm('Tem certeza que deseja excluir este adicional?')) {
       dispatch({
         type: 'DELETE_ADDITIONAL',

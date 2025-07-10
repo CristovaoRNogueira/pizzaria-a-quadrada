@@ -128,13 +128,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
 
   const handleAdvanceStatus = (orderId: string, currentStatus: OrderStatus) => {
     const nextStatus = getNextStatus(currentStatus);
+    const orderIdNumber = parseInt(orderId);
     if (nextStatus) {
       // Atualizar no backend
-      apiService.updateOrderStatus(orderId, nextStatus.toUpperCase())
+      apiService.updateOrderStatus(orderIdNumber, nextStatus.toUpperCase())
         .then(() => {
           dispatch({
             type: 'UPDATE_ORDER_STATUS',
-            payload: { id: orderId, status: nextStatus }
+            payload: { id: orderIdNumber, status: nextStatus }
           });
           dispatch({
             type: 'ADD_NOTIFICATION',
@@ -160,12 +161,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   };
 
   const handleDeleteOrder = (orderId: string) => {
+    const orderIdNumber = parseInt(orderId);
     if (confirm('Tem certeza que deseja excluir este pedido?')) {
-      apiService.deleteOrder(orderId)
+      apiService.deleteOrder(orderIdNumber)
         .then(() => {
           dispatch({
             type: 'REMOVE_ORDER',
-            payload: orderId
+            payload: orderIdNumber
           });
           dispatch({
             type: 'ADD_NOTIFICATION',

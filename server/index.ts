@@ -109,6 +109,9 @@ app.get("/api/pizzas", async (req, res) => {
         large: pizza.priceLarge,
         family: pizza.priceFamily,
       },
+      isActive: pizza.isActive,
+      createdAt: pizza.createdAt,
+      updatedAt: pizza.updatedAt,
     }));
 
     res.json(formattedPizzas);
@@ -161,6 +164,9 @@ app.post("/api/pizzas", authenticateToken, async (req, res) => {
         large: pizza.priceLarge,
         family: pizza.priceFamily,
       },
+      isActive: pizza.isActive,
+      createdAt: pizza.createdAt,
+      updatedAt: pizza.updatedAt,
     };
 
     res.json(formattedPizza);
@@ -216,6 +222,9 @@ app.put("/api/pizzas/:id", authenticateToken, async (req, res) => {
         large: pizza.priceLarge,
         family: pizza.priceFamily,
       },
+      isActive: pizza.isActive,
+      createdAt: pizza.createdAt,
+      updatedAt: pizza.updatedAt,
     };
 
     res.json(formattedPizza);
@@ -360,13 +369,17 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
 
     const formattedOrders = orders.map((order) => ({
       id: order.id,
+      customerId: order.customerId,
       customer: {
+        id: order.customer.id,
         name: order.customer.name,
         phone: order.customer.phone,
-        address: order.customer.address,
-        neighborhood: order.customer.neighborhood,
-        reference: order.customer.reference,
+        address: order.customer.address || "",
+        neighborhood: order.customer.neighborhood || "",
+        reference: order.customer.reference || "",
         deliveryType: order.customer.deliveryType,
+        latitude: order.customer.latitude,
+        longitude: order.customer.longitude,
         location:
           order.customer.latitude && order.customer.longitude
             ? {
@@ -374,6 +387,8 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
                 lng: order.customer.longitude,
               }
             : undefined,
+        createdAt: order.customer.createdAt,
+        updatedAt: order.customer.updatedAt,
       },
       items: order.orderItems.map((item) => ({
         id: item.pizza.id,
@@ -394,10 +409,18 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
         })),
         notes: item.notes,
         price: item.unitPrice,
+        sizes: {
+          ...(item.pizza.priceSmall && { small: item.pizza.priceSmall }),
+          medium: item.pizza.priceMedium,
+          large: item.pizza.priceLarge,
+          family: item.pizza.priceFamily,
+        },
       })),
       total: order.total,
-      status: order.status.toLowerCase(),
+      status: order.status.toLowerCase() as any,
+      notes: order.notes,
       createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
       payment: {
         method: order.paymentMethod,
         needsChange: order.paymentNeedsChange,
@@ -405,6 +428,11 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
         pixCode: order.paymentPixCode,
         stripePaymentIntentId: order.paymentStripeId,
       },
+      paymentMethod: order.paymentMethod,
+      paymentNeedsChange: order.paymentNeedsChange,
+      paymentChangeAmount: order.paymentChangeAmount,
+      paymentPixCode: order.paymentPixCode,
+      paymentStripeId: order.paymentStripeId,
     }));
 
     res.json(formattedOrders);
@@ -503,6 +531,7 @@ app.post("/api/orders", async (req, res) => {
         customerId: customerData.id,
         total,
         status: "NEW",
+        notes: "",
         paymentMethod: payment.method,
         paymentNeedsChange: payment.needsChange || false,
         paymentChangeAmount: payment.changeAmount,
@@ -524,16 +553,75 @@ app.post("/api/orders", async (req, res) => {
 
     console.log("✅ Pedido criado com sucesso no banco:", order.id);
 
-    res.json({
+    const formattedOrder = {
       id: order.id,
-      message: "Pedido criado com sucesso",
-      order: {
-        id: order.id,
-        total: order.total,
-        status: order.status,
-        createdAt: order.createdAt,
+      customerId: order.customerId,
+      customer: {
+        id: order.customer.id,
+        name: order.customer.name,
+        phone: order.customer.phone,
+        address: order.customer.address || "",
+        neighborhood: order.customer.neighborhood || "",
+        reference: order.customer.reference || "",
+        deliveryType: order.customer.deliveryType,
+        latitude: order.customer.latitude,
+        longitude: order.customer.longitude,
+        location:
+          order.customer.latitude && order.customer.longitude
+            ? {
+                lat: order.customer.latitude,
+                lng: order.customer.longitude,
+              }
+            : undefined,
+        createdAt: order.customer.createdAt,
+        updatedAt: order.customer.updatedAt,
       },
-    });
+      items: order.orderItems.map((item) => ({
+        id: item.pizza.id,
+        name: item.pizza.name,
+        description: item.pizza.description,
+        image: item.pizza.image,
+        category: item.pizza.category,
+        ingredients: item.pizza.ingredients,
+        quantity: item.quantity,
+        selectedSize: item.selectedSize,
+        selectedFlavors: item.selectedFlavors.map((flavorId) => ({
+          id: parseInt(flavorId),
+          name: "Sabor"
+        })),
+        selectedAdditionals: item.selectedAdditionals.map((additionalId) => ({
+          id: parseInt(additionalId),
+          name: "Adicional"
+        })),
+        notes: item.notes,
+        price: item.unitPrice,
+        sizes: {
+          ...(item.pizza.priceSmall && { small: item.pizza.priceSmall }),
+          medium: item.pizza.priceMedium,
+          large: item.pizza.priceLarge,
+          family: item.pizza.priceFamily,
+        },
+      })),
+      total: order.total,
+      status: order.status.toLowerCase() as any,
+      notes: order.notes,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      payment: {
+        method: order.paymentMethod,
+        needsChange: order.paymentNeedsChange,
+        changeAmount: order.paymentChangeAmount,
+        pixCode: order.paymentPixCode,
+        stripePaymentIntentId: order.paymentStripeId,
+      },
+      paymentMethod: order.paymentMethod,
+      paymentNeedsChange: order.paymentNeedsChange,
+      paymentChangeAmount: order.paymentChangeAmount,
+      paymentPixCode: order.paymentPixCode,
+      paymentStripeId: order.paymentStripeId,
+    };
+
+    res.json(formattedOrder);
   } catch (error) {
     console.error("❌ Erro ao criar pedido:", error);
     console.error("Stack trace:", error);
@@ -554,11 +642,87 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
     const order = await prisma.order.update({
       where: { id: parseInt(id) },
       data: { status: status.toUpperCase() },
+      include: {
+        customer: true,
+        orderItems: {
+          include: {
+            pizza: true,
+          },
+        },
+      },
     });
 
     console.log("Status do pedido atualizado:", order);
 
-    res.json(order);
+    const formattedOrder = {
+      id: order.id,
+      customerId: order.customerId,
+      customer: {
+        id: order.customer.id,
+        name: order.customer.name,
+        phone: order.customer.phone,
+        address: order.customer.address || "",
+        neighborhood: order.customer.neighborhood || "",
+        reference: order.customer.reference || "",
+        deliveryType: order.customer.deliveryType,
+        latitude: order.customer.latitude,
+        longitude: order.customer.longitude,
+        location:
+          order.customer.latitude && order.customer.longitude
+            ? {
+                lat: order.customer.latitude,
+                lng: order.customer.longitude,
+              }
+            : undefined,
+        createdAt: order.customer.createdAt,
+        updatedAt: order.customer.updatedAt,
+      },
+      items: order.orderItems.map((item) => ({
+        id: item.pizza.id,
+        name: item.pizza.name,
+        description: item.pizza.description,
+        image: item.pizza.image,
+        category: item.pizza.category,
+        ingredients: item.pizza.ingredients,
+        quantity: item.quantity,
+        selectedSize: item.selectedSize,
+        selectedFlavors: item.selectedFlavors.map((flavorId) => ({
+          id: parseInt(flavorId),
+          name: "Sabor"
+        })),
+        selectedAdditionals: item.selectedAdditionals.map((additionalId) => ({
+          id: parseInt(additionalId),
+          name: "Adicional"
+        })),
+        notes: item.notes,
+        price: item.unitPrice,
+        sizes: {
+          ...(item.pizza.priceSmall && { small: item.pizza.priceSmall }),
+          medium: item.pizza.priceMedium,
+          large: item.pizza.priceLarge,
+          family: item.pizza.priceFamily,
+        },
+      })),
+      total: order.total,
+      status: order.status.toLowerCase() as any,
+      notes: order.notes,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      payment: {
+        method: order.paymentMethod,
+        needsChange: order.paymentNeedsChange,
+        changeAmount: order.paymentChangeAmount,
+        pixCode: order.paymentPixCode,
+        stripePaymentIntentId: order.paymentStripeId,
+      },
+      paymentMethod: order.paymentMethod,
+      paymentNeedsChange: order.paymentNeedsChange,
+      paymentChangeAmount: order.paymentChangeAmount,
+      paymentPixCode: order.paymentPixCode,
+      paymentStripeId: order.paymentStripeId,
+    };
+
+    res.json(formattedOrder);
   } catch (error) {
     console.error("Erro ao atualizar status do pedido:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
@@ -655,9 +819,12 @@ app.get("/api/business-settings", async (req, res) => {
       });
 
       const formattedSettings = {
+        id: defaultSettings.id,
         isOpen: defaultSettings.isOpen,
         closedMessage: defaultSettings.closedMessage,
         businessHours: defaultSettings.businessHours.map((hour) => ({
+          id: hour.id,
+          businessSettingsId: hour.businessSettingsId,
           day: hour.day,
           isOpen: hour.isOpen,
           openTime: hour.openTime,
@@ -681,15 +848,20 @@ app.get("/api/business-settings", async (req, res) => {
           state: "BA",
           zipCode: "45000-000",
         },
+        createdAt: defaultSettings.createdAt,
+        updatedAt: defaultSettings.updatedAt,
       };
 
       return res.json(formattedSettings);
     }
 
     const formattedSettings = {
+      id: settings.id,
       isOpen: settings.isOpen,
       closedMessage: settings.closedMessage,
       businessHours: settings.businessHours.map((hour) => ({
+        id: hour.id,
+        businessSettingsId: hour.businessSettingsId,
         day: hour.day,
         isOpen: hour.isOpen,
         openTime: hour.openTime,
@@ -713,6 +885,8 @@ app.get("/api/business-settings", async (req, res) => {
         state: "BA",
         zipCode: "45000-000",
       },
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
     };
 
     res.json(formattedSettings);
@@ -760,6 +934,7 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
         acceptPix: payment?.acceptPix ?? true,
         acceptCard: payment?.acceptCard ?? false,
       },
+      include: { businessHours: true },
     });
 
     console.log("Configurações principais atualizadas:", settings);
@@ -790,7 +965,46 @@ app.put("/api/business-settings", authenticateToken, async (req, res) => {
       console.log("Horários de funcionamento atualizados");
     }
 
-    res.json({ message: "Configurações atualizadas com sucesso" });
+    const updatedSettings = await prisma.businessSettings.findUnique({
+      where: { id: "default" },
+      include: { businessHours: true },
+    });
+
+    const formattedSettings = {
+      id: updatedSettings!.id,
+      isOpen: updatedSettings!.isOpen,
+      closedMessage: updatedSettings!.closedMessage,
+      businessHours: updatedSettings!.businessHours.map((hour) => ({
+        id: hour.id,
+        businessSettingsId: hour.businessSettingsId,
+        day: hour.day,
+        isOpen: hour.isOpen,
+        openTime: hour.openTime,
+        closeTime: hour.closeTime,
+      })),
+      payment: {
+        pixKey: updatedSettings!.pixKey,
+        pixName: updatedSettings!.pixName,
+        stripePublishableKey: updatedSettings!.stripePublishableKey,
+        stripeSecretKey: updatedSettings!.stripeSecretKey,
+        acceptCash: updatedSettings!.acceptCash,
+        acceptPix: updatedSettings!.acceptPix,
+        acceptCard: updatedSettings!.acceptCard,
+      },
+      businessInfo: businessInfo || {
+        name: "Pizzaria a Quadrada",
+        whatsapp: "77999742491",
+        instagram: "@pizzariaquadrada",
+        address: "Rua das Pizzas, 123",
+        city: "Vitória da Conquista",
+        state: "BA",
+        zipCode: "45000-000",
+      },
+      createdAt: updatedSettings!.createdAt,
+      updatedAt: updatedSettings!.updatedAt,
+    };
+
+    res.json(formattedSettings);
   } catch (error) {
     console.error("Erro ao atualizar configurações:", error);
     res.status(500).json({ error: "Erro interno do servidor" });

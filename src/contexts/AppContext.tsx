@@ -162,6 +162,10 @@ const saveBusinessSettings = (settings: BusinessSettings): void => {
   }
 };
 
+const generateOrderId = (): number => {
+  return Date.now();
+};
+
 const initialState: AppState = {
   cart: [],
   orders: [],
@@ -178,10 +182,6 @@ const initialState: AppState = {
   users: [],
   currentUser: null,
   userPermissions: null,
-};
-
-const generateOrderId = (): number => {
-  return Date.now();
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -298,7 +298,15 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       const orderWithId = { ...action.payload, id: orderId };
 
       const orderToSend = {
-        customer: orderWithId.customer,
+        customer: {
+          name: orderWithId.customer.name,
+          phone: orderWithId.customer.phone,
+          address: orderWithId.customer.address || "",
+          neighborhood: orderWithId.customer.neighborhood || "",
+          reference: orderWithId.customer.reference || "",
+          deliveryType: orderWithId.customer.deliveryType,
+          location: orderWithId.customer.location,
+        },
         items: orderWithId.items.map((item) => ({
           id: item.id,
           name: item.name,

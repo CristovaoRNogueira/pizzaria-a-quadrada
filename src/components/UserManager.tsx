@@ -105,7 +105,7 @@ const UserManager: React.FC = () => {
       });
     } else {
       const newUser: User = {
-        id: `user-${Date.now()}`,
+        id: Date.now(),
         name: formData.name,
         email: formData.email,
         role: formData.role,
@@ -141,7 +141,7 @@ const UserManager: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm('Tem certeza que deseja excluir este usuário?')) {
       dispatch({
         type: 'DELETE_USER',

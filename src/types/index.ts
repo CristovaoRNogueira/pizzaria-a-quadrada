@@ -12,6 +12,9 @@ export interface Pizza {
     large: number;
     family: number;
   };
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Additional {
@@ -21,6 +24,8 @@ export interface Additional {
   price: number;
   category: 'queijo' | 'carne' | 'vegetal' | 'outros';
   isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface PizzaSize {
@@ -39,16 +44,21 @@ export interface CartItem extends Pizza {
 }
 
 export interface Customer {
+  id?: number;
   name: string;
   phone: string;
-  address: string;
-  neighborhood: string;
+  address?: string;
+  neighborhood?: string;
   reference?: string;
   location?: {
     lat: number;
     lng: number;
   };
   deliveryType: 'delivery' | 'pickup';
+  latitude?: number;
+  longitude?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface PaymentInfo {
@@ -61,20 +71,44 @@ export interface PaymentInfo {
   pixTransactionId?: string;
 }
 
+export interface OrderItem {
+  id?: number;
+  orderId?: number;
+  pizzaId: number;
+  quantity: number;
+  selectedSize: string;
+  selectedFlavors: string[];
+  selectedAdditionals: string[];
+  notes?: string;
+  unitPrice: number;
+  totalPrice: number;
+}
+
 export interface Order {
   id: number;
+  customerId?: number;
   customer: Customer;
   items: CartItem[];
   total: number;
-  status: 'new' | 'accepted' | 'production' | 'delivery' | 'completed' | 'cancelled';
-  createdAt: Date;
+  status: OrderStatus;
   notes?: string;
+  createdAt: Date;
+  updatedAt?: Date;
   payment: PaymentInfo;
+  // Campos do schema Prisma
+  paymentMethod: string;
+  paymentNeedsChange: boolean;
+  paymentChangeAmount?: number;
+  paymentPixCode?: string;
+  paymentStripeId?: string;
+  orderItems?: OrderItem[];
 }
 
-export type OrderStatus = Order['status'];
+export type OrderStatus = 'NEW' | 'ACCEPTED' | 'PRODUCTION' | 'DELIVERY' | 'COMPLETED' | 'CANCELLED';
 
 export interface BusinessHours {
+  id?: number;
+  businessSettingsId?: string;
   day: string;
   isOpen: boolean;
   openTime: string;
@@ -92,11 +126,14 @@ export interface PaymentSettings {
 }
 
 export interface BusinessSettings {
-  businessHours: BusinessHours[];
+  id?: string;
   isOpen: boolean;
   closedMessage: string;
+  businessHours: BusinessHours[];
   payment: PaymentSettings;
   businessInfo: BusinessInfo;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface BusinessInfo {
@@ -107,6 +144,16 @@ export interface BusinessInfo {
   city: string;
   state: string;
   zipCode: string;
+}
+
+export interface Admin {
+  id: number;
+  email: string;
+  password: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface User {
@@ -164,13 +211,24 @@ export interface LoginResponse {
     id: number;
     email: string;
     name: string;
-    role: UserRole;
+    role?: UserRole;
     permissions?: UserPermissions;
   };
 }
 
 export interface CreateOrderRequest {
-  customer: Customer;
+  customer: {
+    name: string;
+    phone: string;
+    address?: string;
+    neighborhood?: string;
+    reference?: string;
+    deliveryType: 'delivery' | 'pickup';
+    location?: {
+      lat: number;
+      lng: number;
+    };
+  };
   items: Array<{
     id: number;
     name: string;
@@ -186,7 +244,13 @@ export interface CreateOrderRequest {
     price: number;
   }>;
   total: number;
-  payment: PaymentInfo;
+  payment: {
+    method: string;
+    needsChange?: boolean;
+    changeAmount?: number;
+    pixCode?: string;
+    stripePaymentIntentId?: string;
+  };
 }
 
 export interface CreatePizzaRequest {
@@ -195,7 +259,12 @@ export interface CreatePizzaRequest {
   image: string;
   category: Pizza['category'];
   ingredients: string[];
-  sizes: Pizza['sizes'];
+  sizes: {
+    small?: number;
+    medium: number;
+    large: number;
+    family: number;
+  };
 }
 
 export interface CreateAdditionalRequest {
@@ -203,4 +272,12 @@ export interface CreateAdditionalRequest {
   description: string;
   price: number;
   category: Additional['category'];
+}
+
+export interface UpdateBusinessSettingsRequest {
+  isOpen?: boolean;
+  closedMessage?: string;
+  businessHours?: BusinessHours[];
+  payment?: PaymentSettings;
+  businessInfo?: BusinessInfo;
 }
