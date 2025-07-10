@@ -35,7 +35,7 @@ async function main() {
       pixName: "Pizzaria a Quadrada",
       acceptCash: true,
       acceptPix: true,
-      acceptCard: false,
+      //acceptCard: false,
     },
   });
 
