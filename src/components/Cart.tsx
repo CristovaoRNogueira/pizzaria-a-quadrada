@@ -9,6 +9,7 @@ import {
   Store,
   Banknote,
   QrCode,
+  CreditCard
 } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { Customer, PaymentInfo } from "../types";
@@ -51,7 +52,7 @@ const Cart: React.FC = () => {
   const handleRemoveItem = (id: number, size: string) => {
     dispatch({
       type: "REMOVE_FROM_CART",
-      payload: state.cart.findIndex((item, index) => 
+      payload: state.cart.findIndex((item) => 
         item.id === id && 
         item.selectedSize === size
       ),
@@ -746,15 +747,14 @@ const Cart: React.FC = () => {
                 >
                   <Plus className="h-4 w-4" />
                 </button>
+                <button
+                  onClick={() => handleRemoveItem(item.id, item.selectedSize)}
+                  className="text-red-600 hover:text-red-700 p-2 transition-colors"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
               </div>
-            {payment.method === "pix" ? (
-              <button
-                onClick={() => handleRemoveItem(item.id, item.selectedSize)}
-                className="text-red-600 hover:text-red-700 p-2 transition-colors"
-              >
-                <QrCode className="h-5 w-5" />
-              </button>
-                  {isSubmitting ? "Processando..." : "Pagar com PIX"}
+            </div>
           </div>
         ))}
       </div>
