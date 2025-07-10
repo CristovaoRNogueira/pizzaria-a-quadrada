@@ -307,7 +307,6 @@ const OrderTracking: React.FC = () => {
               <span className="font-medium">
                 {order.payment.method === 'dinheiro' && 'Dinheiro'}
                 {order.payment.method === 'pix' && 'PIX'}
-                {order.payment.method === 'cartao' && 'Cartão de Crédito'}
               </span>
             </div>
             

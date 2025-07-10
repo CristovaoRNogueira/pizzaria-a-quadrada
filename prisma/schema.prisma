@@ -113,11 +113,8 @@ model BusinessSettings {
   // Configurações de pagamento
   pixKey               String  @default("77999742491")
   pixName              String  @default("Pizzaria a Quadrada")
-  stripePublishableKey String  @default("")
-  stripeSecretKey      String  @default("")
   acceptCash           Boolean @default(true)
   acceptPix            Boolean @default(true)
-  acceptCard           Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

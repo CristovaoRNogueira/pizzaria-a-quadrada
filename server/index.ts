@@ -536,7 +536,6 @@ app.post("/api/orders", async (req, res) => {
         paymentNeedsChange: payment.needsChange || false,
         paymentChangeAmount: payment.changeAmount,
         paymentPixCode: payment.pixCode,
-        paymentStripeId: payment.stripePaymentIntentId,
         orderItems: {
           create: orderItemsData,
         },
