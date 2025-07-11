@@ -62,7 +62,7 @@ export interface Customer {
 }
 
 export interface PaymentInfo {
-  method: 'dinheiro' | 'pix';
+  method: 'dinheiro' | 'pix' | 'cartao';
   needsChange?: boolean;
   changeAmount?: number;
   pixCode?: string;
@@ -118,6 +118,7 @@ export interface PaymentSettings {
   pixName: string;
   acceptCash: boolean;
   acceptPix: boolean;
+  acceptCard?: boolean;
 }
 
 export interface BusinessSettings {

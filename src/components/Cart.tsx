@@ -13,12 +13,10 @@ import {
 } from "lucide-react";
 import { useApp } from "../contexts/AppContext";
 import { Customer, PaymentInfo } from "../types";
-import PaymentModal from "./PaymentModal";
 
 const Cart: React.FC = () => {
   const { state, dispatch } = useApp();
   const [showCheckout, setShowCheckout] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customer, setCustomer] = useState<Customer>({
     name: "",
@@ -149,6 +147,13 @@ const Cart: React.FC = () => {
     }
   };
 
+  const generatePixCode = () => {
+    // Simulated PIX code generation
+    const pixKey = state.businessSettings.payment.pixKey;
+    const pixName = state.businessSettings.payment.pixName;
+    return `00020126580014BR.GOV.BCB.PIX0136${pixKey}5204000053039865802BR5925${pixName}6009SAO PAULO62070503***6304`;
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -169,10 +174,36 @@ const Cart: React.FC = () => {
       return;
     }
 
+    // Validar troco se necessário
+    if (payment.method === "dinheiro" && payment.needsChange) {
+      if (!payment.changeAmount || payment.changeAmount < total) {
+        dispatch({
+          type: "ADD_NOTIFICATION",
+          payload: "Valor para troco deve ser maior que o total do pedido!",
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
       console.log("Iniciando criação do pedido...");
+
+      // Preparar dados de pagamento baseado no método
+      let paymentData: PaymentInfo = {
+        method: payment.method,
+      };
+
+      if (payment.method === "dinheiro") {
+        paymentData.needsChange = payment.needsChange || false;
+        if (payment.needsChange) {
+          paymentData.changeAmount = payment.changeAmount;
+        }
+      } else if (payment.method === "pix") {
+        paymentData.pixCode = generatePixCode();
+        paymentData.pixPaid = true; // Assumir que será pago
+      }
 
       const orderData = {
         customer: {
@@ -200,12 +231,8 @@ const Cart: React.FC = () => {
           selectedAdditionals: item.selectedAdditionals || [],
           notes: item.notes || "",
         })),
-        payment: {
-          method: payment.method,
-          needsChange: payment.needsChange || false,
-          changeAmount: payment.changeAmount,
-          pixCode: payment.pixCode,
-        },
+        total,
+        payment: paymentData,
       };
 
       console.log("Dados do pedido preparados:", orderData);
@@ -238,63 +265,6 @@ const Cart: React.FC = () => {
     }
   };
 
-  const handlePaymentSuccess = async (paymentData: PaymentInfo) => {
-    setPayment(paymentData);
-    setShowPayment(false);
-
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      const orderData = {
-        customer: {
-          name: customer.name,
-          phone: customer.phone,
-          address: customer.address || "",
-          neighborhood: customer.neighborhood || "",
-          reference: customer.reference || "",
-          deliveryType: customer.deliveryType,
-          location: customer.location,
-        },
-        items: state.cart.map((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          image: item.image,
-          category: item.category,
-          ingredients: item.ingredients,
-          quantity: item.quantity,
-          selectedSize: item.selectedSize,
-          selectedFlavors: item.selectedFlavors || [
-            { id: item.id, name: item.name },
-          ],
-          selectedAdditionals: item.selectedAdditionals || [],
-          notes: item.notes || "",
-          price: item.price,
-        })),
-        total,
-        payment: paymentData,
-      };
-
-      dispatch({ type: "CREATE_ORDER", payload: orderData });
-      
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Pedido e pagamento processados com sucesso!",
-      });
-      
-      dispatch({ type: "SET_VIEW", payload: "menu" });
-    } catch (error) {
-      console.error("Erro ao processar pagamento:", error);
-      dispatch({
-        type: "ADD_NOTIFICATION",
-        payload: "Erro ao processar pagamento. Tente novamente.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const getSizeLabel = (size: string) => {
     const labels = {
       small: "Pequena",
@@ -309,6 +279,7 @@ const Cart: React.FC = () => {
     const labels = {
       dinheiro: "Dinheiro",
       pix: "PIX",
+      cartao: "Cartão de Crédito",
     };
     return labels[method as keyof typeof labels] || method;
   };
@@ -319,6 +290,8 @@ const Cart: React.FC = () => {
         return <Banknote className="h-4 w-4" />;
       case "pix":
         return <QrCode className="h-4 w-4" />;
+      case "cartao":
+        return <CreditCard className="h-4 w-4" />;
       default:
         return <Banknote className="h-4 w-4" />;
     }
@@ -550,6 +523,19 @@ const Cart: React.FC = () => {
                     <span>PIX</span>
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setPayment({ method: "cartao" })}
+                  className={`w-full p-3 rounded-lg border-2 transition-colors flex items-center space-x-3 ${
+                    payment.method === "cartao"
+                      ? "border-red-500 bg-red-50 text-red-700"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <CreditCard className="h-5 w-5" />
+                  <span>Cartão de Crédito</span>
+                </button>
               </div>
             </div>
 
@@ -604,6 +590,39 @@ const Cart: React.FC = () => {
               </div>
             )}
 
+            {/* PIX Information */}
+            {payment.method === "pix" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">
+                  💳 Informações do PIX:
+                </h4>
+                <p className="text-blue-700 text-sm">
+                  <strong>Chave PIX:</strong> {state.businessSettings.payment.pixKey}
+                  <br />
+                  <strong>Nome:</strong> {state.businessSettings.payment.pixName}
+                  <br />
+                  <strong>Valor:</strong> R$ {total.toFixed(2)}
+                </p>
+                <p className="text-blue-600 text-xs mt-2">
+                  O código PIX será gerado após a confirmação do pedido.
+                </p>
+              </div>
+            )}
+
+            {/* Card Information */}
+            {payment.method === "cartao" && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">
+                  💳 Pagamento no Cartão:
+                </h4>
+                <p className="text-green-700 text-sm">
+                  <strong>Valor:</strong> R$ {total.toFixed(2)}
+                  <br />
+                  O pagamento será processado na entrega/retirada.
+                </p>
+              </div>
+            )}
+
             <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-lg font-semibold">Total:</span>
@@ -612,45 +631,21 @@ const Cart: React.FC = () => {
                 </span>
               </div>
 
-              {payment.method === "cartao" ? (
-                <button
-                  type="button"
-                  onClick={() => setShowPayment(true)}
-                  disabled={isSubmitting}
-                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                >
-                  <CreditCard className="h-5 w-5" />
-                  <span>
-                    {isSubmitting ? "Processando..." : "Pagar com Cartão"}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                >
-                  {getPaymentIcon(payment.method)}
-                  <span>
-                    {isSubmitting
-                      ? "Enviando Pedido..."
-                      : `Confirmar Pedido - ${getPaymentMethodLabel(
-                          payment.method
-                        )}`}
-                  </span>
-                </button>
-              )}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+              >
+                {getPaymentIcon(payment.method)}
+                <span>
+                  {isSubmitting
+                    ? "Enviando Pedido..."
+                    : `Finalizar Pedido - ${getPaymentMethodLabel(payment.method)}`}
+                </span>
+              </button>
             </div>
           </form>
         </div>
-
-        {showPayment && (
-          <PaymentModal
-            amount={total}
-            onSuccess={handlePaymentSuccess}
-            onClose={() => setShowPayment(false)}
-          />
-        )}
       </div>
     );
   }

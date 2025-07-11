@@ -102,6 +102,7 @@ export const defaultPaymentSettings: PaymentSettings = {
   pixName: "Pizzaria a Quadrada",
   acceptCash: true,
   acceptPix: true,
+  acceptCard: true,
 };
 
 const defaultBusinessInfo: BusinessInfo = {

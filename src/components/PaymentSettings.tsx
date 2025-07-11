@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save, QrCode, Banknote, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Save, QrCode, Banknote, CreditCard, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { defaultPaymentSettings } from '../contexts/AppContext';
 import { PaymentSettings as PaymentSettingsType } from '../types';
@@ -21,7 +21,7 @@ const PaymentSettings: React.FC = () => {
     });
   };
 
-  const togglePaymentMethod = (method: 'acceptCash' | 'acceptPix') => {
+  const togglePaymentMethod = (method: 'acceptCash' | 'acceptPix' | 'acceptCard') => {
     setSettings({
       ...settings,
       [method]: !settings[method]
@@ -113,6 +113,27 @@ const PaymentSettings: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   placeholder="Nome ou razão social"
                 />
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <CreditCard className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium text-gray-800">Cartão de Crédito</p>
+                    <p className="text-sm text-gray-600">Pagamento com cartão na entrega/retirada</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => togglePaymentMethod('acceptCard')}
+                  className={`flex items-center space-x-2 px-3 py-1 rounded-full transition-colors ${
+                    settings.acceptCard ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {settings.acceptCard ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                  <span className="text-sm font-medium">
+                    {settings.acceptCard ? 'Ativo' : 'Inativo'}
+                  </span>
+                </button>
               </div>
             </div>
           </div>
