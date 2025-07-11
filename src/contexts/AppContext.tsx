@@ -281,7 +281,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "CREATE_ORDER":
       console.log("CREATE_ORDER action triggered with payload:", action.payload);
 
-      // Não gerar ID aqui, deixar o backend gerar
       const orderToCreate = action.payload;
 
       const orderToSend = {
@@ -321,12 +320,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         .then((response) => {
           console.log("✅ Pedido enviado para o backend com sucesso:", response);
           
-          // Atualizar o estado apenas com o pedido retornado pelo backend
-          dispatch({
-            type: 'SET_CURRENT_ORDER',
-            payload: response
-          });
-          
+          // Mostrar página de sucesso
           dispatch({
             type: 'SHOW_ORDER_SUCCESS',
             payload: true
@@ -340,7 +334,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           });
         });
 
-      // Limpar carrinho imediatamente
+      // Limpar carrinho
       return {
         ...state,
         cart: []
