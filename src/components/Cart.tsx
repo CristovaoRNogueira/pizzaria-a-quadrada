@@ -245,13 +245,13 @@ const Cart: React.FC = () => {
         payload: "Pedido enviado com sucesso!",
       });
       
-      dispatch({ type: "SET_VIEW", payload: "menu" });
+      // Não redirecionar para o menu, deixar o contexto gerenciar a exibição da tela de sucesso
 
       // Simulate WhatsApp notification
       setTimeout(() => {
         dispatch({
           type: "ADD_NOTIFICATION",
-          payload: "📱 WhatsApp: Seu pedido foi recebido!",
+          payload: "📱 WhatsApp será aberto automaticamente!",
         });
       }, 1000);
     } catch (error) {

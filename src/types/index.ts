@@ -193,6 +193,24 @@ export interface UserPermissions {
   };
 }
 
+export interface AppState {
+  cart: CartItem[];
+  orders: Order[];
+  currentView: "menu" | "cart" | "admin";
+  notifications: string[];
+  pizzas: Pizza[];
+  additionals: Additional[];
+  showBeverageSuggestions: boolean;
+  lastAddedPizza: Pizza | null;
+  businessSettings: BusinessSettings;
+  isLoading: boolean;
+  currentOrder: Order | null;
+  showOrderSuccess: boolean;
+  users: User[];
+  currentUser: User | null;
+  userPermissions: UserPermissions | null;
+}
+
 // API Response Types
 export interface ApiResponse<T = any> {
   success: boolean;

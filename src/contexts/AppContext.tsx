@@ -36,7 +36,7 @@ interface AppState {
   businessSettings: BusinessSettings;
   isLoading: boolean;
   currentOrder: Order | null;
-  showOrderTracking: boolean;
+  showOrderSuccess: boolean;
   users: User[];
   currentUser: User | null;
   userPermissions: UserPermissions | null;
@@ -79,7 +79,7 @@ type AppAction =
   | { type: "SET_ORDERS"; payload: Order[] }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_CURRENT_ORDER"; payload: Order | null }
-  | { type: "SHOW_ORDER_TRACKING"; payload: boolean }
+  | { type: "SHOW_ORDER_SUCCESS"; payload: boolean }
   | { type: "SET_USERS"; payload: User[] }
   | { type: "ADD_USER"; payload: User }
   | { type: "UPDATE_USER"; payload: User }
@@ -175,7 +175,7 @@ const initialState: AppState = {
   businessSettings: loadBusinessSettings(),
   isLoading: false,
   currentOrder: null,
-  showOrderTracking: false,
+  showOrderSuccess: false,
   users: [],
   currentUser: null,
   userPermissions: null,
@@ -198,8 +198,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "SET_CURRENT_ORDER":
       return { ...state, currentOrder: action.payload };
 
-    case "SHOW_ORDER_TRACKING":
-      return { ...state, showOrderTracking: action.payload };
+    case "SHOW_ORDER_SUCCESS":
+      return { ...state, showOrderSuccess: action.payload };
 
     case "SET_USERS":
       return { ...state, users: action.payload };
@@ -338,7 +338,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           });
           
           dispatch({
-            type: 'SHOW_ORDER_TRACKING',
+            type: 'SHOW_ORDER_SUCCESS',
             payload: true
           });
         })
