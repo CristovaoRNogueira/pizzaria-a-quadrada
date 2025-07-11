@@ -19,10 +19,7 @@ const DeliveryPanel: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Filtrar apenas pedidos para entrega
-  const deliveryOrders = state.orders.filter(order => 
-    order.customer.deliveryType === 'delivery' && 
-    ['accepted', 'production', 'delivery'].includes(order.status)
-  );
+  const deliveryOrders: Order[] = [];
 
   const handleConfirmPayment = (orderId: string) => {
     if (confirm('Confirmar que o pagamento foi recebido?')) {
@@ -36,10 +33,6 @@ const DeliveryPanel: React.FC = () => {
 
   const handleConfirmDelivery = (orderId: string) => {
     if (confirm('Confirmar que o pedido foi entregue?')) {
-      dispatch({
-        type: 'UPDATE_ORDER_STATUS',
-        payload: { id: orderId, status: 'completed' }
-      });
       dispatch({
         type: 'ADD_NOTIFICATION',
         payload: 'Entrega confirmada com sucesso!'

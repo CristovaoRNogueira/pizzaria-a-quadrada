@@ -195,7 +195,6 @@ export interface UserPermissions {
 
 export interface AppState {
   cart: CartItem[];
-  orders: Order[];
   currentView: "menu" | "cart" | "admin";
   notifications: string[];
   pizzas: Pizza[];

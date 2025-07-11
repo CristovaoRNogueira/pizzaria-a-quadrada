@@ -26,7 +26,6 @@ import { apiService } from "../services/api";
 
 interface AppState {
   cart: CartItem[];
-  orders: Order[];
   currentView: "menu" | "cart" | "admin";
   notifications: string[];
   pizzas: Pizza[];
@@ -56,10 +55,6 @@ type AppAction =
   | { type: "CLEAR_CART" }
   | { type: "SET_VIEW"; payload: "menu" | "cart" | "admin" }
   | { type: "CREATE_ORDER"; payload: Order }
-  | {
-      type: "UPDATE_ORDER_STATUS";
-      payload: { id: number; status: OrderStatus };
-    }
   | { type: "ADD_NOTIFICATION"; payload: string }
   | { type: "REMOVE_NOTIFICATION"; payload: number }
   | { type: "ADD_PIZZA"; payload: Pizza }
@@ -76,7 +71,6 @@ type AppAction =
   | { type: "LOAD_BUSINESS_SETTINGS"; payload: BusinessSettings }
   | { type: "SET_PIZZAS"; payload: Pizza[] }
   | { type: "SET_ADDITIONALS"; payload: Additional[] }
-  | { type: "SET_ORDERS"; payload: Order[] }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_CURRENT_ORDER"; payload: Order | null }
   | { type: "SHOW_ORDER_SUCCESS"; payload: boolean }
@@ -85,7 +79,6 @@ type AppAction =
   | { type: "UPDATE_USER"; payload: User }
   | { type: "DELETE_USER"; payload: number }
   | { type: "SET_CURRENT_USER"; payload: User | null }
-  | { type: "REMOVE_ORDER"; payload: number };
 
 const defaultBusinessHours: BusinessHours[] = [
   { day: "Domingo", isOpen: true, openTime: "18:00", closeTime: "23:00" },
@@ -165,7 +158,6 @@ const generateOrderId = (): number => {
 
 const initialState: AppState = {
   cart: [],
-  orders: [],
   currentView: "menu",
   notifications: [],
   pizzas: initialPizzas,
@@ -192,8 +184,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case "SET_ADDITIONALS":
       return { ...state, additionals: action.payload };
 
-    case "SET_ORDERS":
-      return { ...state, orders: action.payload };
 
     case "SET_CURRENT_ORDER":
       return { ...state, currentOrder: action.payload };
@@ -356,28 +346,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         cart: []
       };
 
-    case "REMOVE_ORDER":
-      return {
-        ...state,
-        orders: state.orders.filter(order => order.id !== action.payload),
-      };
-
-    case "UPDATE_ORDER_STATUS":
-      const updatedOrders = state.orders.map((order) =>
-        order.id === action.payload.id
-          ? { ...order, status: action.payload.status }
-          : order
-      );
-
-      const updatedCurrentOrder = state.currentOrder?.id === action.payload.id
-        ? { ...state.currentOrder, status: action.payload.status }
-        : state.currentOrder;
-
-      return {
-        ...state,
-        orders: updatedOrders,
-        currentOrder: updatedCurrentOrder,
-      };
 
     case "ADD_NOTIFICATION":
       return {
@@ -634,15 +602,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
         console.log("✅ Configurações carregadas");
         dispatch({ type: "LOAD_BUSINESS_SETTINGS", payload: businessSettings });
 
-        if (localStorage.getItem("admin_authenticated") === "true") {
-          try {
-            const orders = await apiService.getOrders();
-            console.log("✅ Pedidos carregados:", orders.length);
-            dispatch({ type: "SET_ORDERS", payload: orders });
-          } catch (error) {
-            console.log("ℹ️ Não foi possível carregar pedidos (não autenticado)");
-          }
-        }
       } catch (error) {
         console.error("❌ Erro ao carregar dados:", error);
         dispatch({
@@ -657,63 +616,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     loadData();
   }, []);
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      if (localStorage.getItem("admin_authenticated") === "true") {
-        try {
-          console.log("🔄 Recarregando pedidos para admin...");
-          const orders = await apiService.getOrders();
-          console.log("✅ Pedidos recarregados:", orders.length);
-          dispatch({ type: "SET_ORDERS", payload: orders });
-        } catch (error) {
-          console.error("❌ Erro ao carregar pedidos:", error);
-        }
-      }
-    };
-
-    const checkAuthChange = () => {
-      if (
-        localStorage.getItem("admin_authenticated") === "true" &&
-        state.orders.length === 0
-      ) {
-        loadOrders();
-      }
-    };
-
-    window.addEventListener("storage", checkAuthChange);
-
-    if (
-      localStorage.getItem("admin_authenticated") === "true" &&
-      state.orders.length === 0
-    ) {
-      loadOrders();
-    }
-
-    return () => {
-      window.removeEventListener("storage", checkAuthChange);
-    };
-  }, [state.orders.length]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (localStorage.getItem("admin_authenticated") === "true") {
-      interval = setInterval(async () => {
-        try {
-          const orders = await apiService.getOrders();
-          dispatch({ type: "SET_ORDERS", payload: orders });
-        } catch (error) {
-          console.error("Erro no polling de pedidos:", error);
-        }
-      }, 30000);
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

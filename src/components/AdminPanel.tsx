@@ -475,15 +475,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, userRole }) => {
   // Filtrar pedidos por status
   const getFilteredOrders = () => {
     if (orderStatusTab === 'all') {
-      return state.orders;
+      return [];
     }
-    return state.orders.filter(order => order.status === orderStatusTab);
+    return [];
   };
 
   // Contar pedidos por status
   const getOrderCountByStatus = (status: OrderStatus | 'all') => {
-    if (status === 'all') return state.orders.length;
-    return state.orders.filter(order => order.status === status).length;
+    return 0;
   };
 
   // Verificar permissões do usuário
